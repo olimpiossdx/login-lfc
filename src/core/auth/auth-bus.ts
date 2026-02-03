@@ -18,6 +18,7 @@ export const onAuthEvent = (
     graph.on('auth:relogin-failed-hard', handler as any),
     graph.on('auth:logout', handler as any),
     graph.on('auth:session-expired', handler as any),
+     graph.on('auth:idle-detected', handler as any),
   ];
 
   return () => offs.forEach((off) => off());

@@ -1,11 +1,15 @@
-// src/app/providers/AuthReloginModal.tsx
-
 import React, { useState } from 'react';
+import { User as UserIcon, Lock, Key, AlertTriangle, LogOut } from 'lucide-react';
 import type { ILoginCredentials } from '../core/auth/auth-service.types';
 import { authService, clearLastUser, getLastUser } from '../core/auth/auth-service';
-import Alert from '../ui/alert';
-import useForm from '../hooks/use-form';
 import { router } from '../router';
+import useForm from '../hooks/use-form';
+
+// Novos Componentes de UI
+import Alert from '../ui/alert';
+import Input from '../ui/input';
+import Button from '../ui/button';
+import { ModalContent, ModalFooter, ModalHeader, ModalTitle, ModalDescription } from '../ui/modal/modal';
 
 export interface IAuthReloginModalProps {
   reason: 'token' | 'inactivity' | 'boot';
@@ -17,13 +21,8 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSwitchUser = () => {
-    // 1) limpar último usuário
     clearLastUser();
-
-    // 2) fechar modal
     onClose();
-
-    // 3) navegar para login
     router.navigate({ to: '/login' });
   };
 
@@ -45,64 +44,114 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
     }
   };
 
-  const getMessage = () => {
+  const getMessageConfig = () => {
     if (reason === 'inactivity') {
-      return 'Você ficou um tempo sem usar o sistema. Por segurança, faça login novamente.';
+      return {
+        title: 'Sessão Pausada',
+        desc: 'Detectamos inatividade. Por segurança, confirme sua senha.',
+        icon: Lock,
+        color: 'text-amber-600',
+      };
     }
     if (reason === 'token') {
-      return 'Sua sessão expirou. Faça login novamente para continuar.';
+      return {
+        title: 'Sessão Expirada',
+        desc: 'Seu token de acesso venceu. Faça login novamente.',
+        icon: Key,
+        color: 'text-blue-600',
+      };
     }
-    return 'Faça login para continuar usando o sistema.';
+    return {
+      title: 'Login Necessário',
+      desc: 'Faça login para continuar.',
+      icon: UserIcon,
+      color: 'text-gray-600',
+    };
   };
 
   const { formProps } = useForm({ id: 'login-form-modal', onSubmit });
   const userName = getLastUser();
+  const config = getMessageConfig();
+  const Icon = config.icon;
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-600">{getMessage()}</p>
+    <>
+      <ModalHeader>
+        <ModalTitle className={`flex items-center gap-2 ${config.color}`}>
+          <Icon className="w-5 h-5" />
+          {config.title}
+        </ModalTitle>
+        <ModalDescription>{config.desc}</ModalDescription>
+      </ModalHeader>
 
-      <form {...formProps} className="flex flex-col gap-3 mt-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Usuário</label>
-          <input
-            type="text"
-            name="userName"
-            disabled={!!userName}
-            defaultValue={userName || ''}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            autoFocus
-          />
-        </div>
+      <ModalContent>
+        <form {...formProps} className="space-y-4 pt-2">
+          {/* Campo de Usuário (Readonly) */}
+          <div className="relative">
+            <Input
+              label="Usuário"
+              name="userName"
+              defaultValue={userName || ''}
+              disabled={!!userName}
+              leftIcon={<UserIcon size={18} className="text-gray-400" />}
+              variant="filled" // Visualmente distinto para indicar readonly
+              className="bg-gray-50 dark:bg-gray-900/50"
+            />
+            {/* Indicador visual de que a conta está travada */}
+            {!!userName && (
+              <div className="absolute right-3 top-9">
+                <Lock size={14} className="text-gray-400" />
+              </div>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Senha</label>
-          <input
+          {/* Campo de Senha */}
+          <Input
+            label="Senha"
             type="password"
             name="password"
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Digite sua senha"
+            leftIcon={<Key size={18} />}
+            autoFocus
+            required
           />
-        </div>
 
-        {errorMessage && (
-          <div className="mt-1">
-            <Alert variant="error">{errorMessage}</Alert>
-          </div>
-        )}
+          {/* Feedback de Erro */}
+          {errorMessage && (
+            <Alert variant="error" icon={<AlertTriangle size={16} />} title="Erro de Autenticação">
+              {errorMessage}
+            </Alert>
+          )}
+        </form>
+      </ModalContent>
 
-        <div className="flex justify-between items-center gap-3 mt-4">
-          <button type="button" className="text-xs text-gray-500 hover:text-gray-700" onClick={handleSwitchUser}>
-            Trocar de conta
-          </button>
+      <ModalFooter className="bg-gray-50 dark:bg-gray-900/30 rounded-b-xl border-t dark:border-gray-800 sm:justify-between gap-4">
+        {/* Botão Secundário: Trocar Conta */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleSwitchUser}
+          className="text-gray-500 hover:text-gray-700"
+          leftIcon={<LogOut size={16} />}>
+          Trocar de conta
+        </Button>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60">
-            {isSubmitting ? 'Entrando...' : 'Entrar novamente'}
-          </button>
-        </div>
-      </form>
-    </div>
+        {/* Botão Primário: Entrar (Form Submit via ID externo ou ref seria ideal, mas aqui usamos o botão dentro do form context se possível, ou trigger manual. 
+           Como o botão está fora do <form> no layout do ModalFooter, precisamos conectar via form="id" ou mover o form para envolver tudo.
+           Para simplicidade visual com Compound Components, o ideal é o <form> envolver o ModalContent e ModalFooter, mas o Modal tem estrutura fixa.
+           
+           Solução: Usar o atributo 'form' do HTML5 no botão de submit.
+        */}
+        <Button
+          type="submit"
+          form="login-form-modal" // Conecta ao ID do form definido no useForm
+          isLoading={isSubmitting}
+          variant="primary"
+          className="w-full sm:w-auto px-8">
+          {isSubmitting ? 'Validando...' : 'Desbloquear'}
+        </Button>
+      </ModalFooter>
+    </>
   );
 };

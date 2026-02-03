@@ -47,7 +47,9 @@ export interface IAuthSessionExpiredEvent {
   reason: AuthSessionExpiredReasonType;
   lastUrl: string | null;
 }
-
+export interface IAuthIdleDetectedEvent {
+  type: 'auth:idle-detected';
+}
 export interface ISystemApiOfflineEvent {
   type: 'system:api-offline';
 }
@@ -64,7 +66,8 @@ export type AuthEventType =
   | IAuthReloginSuccessEvent
   | IAuthReloginFailedHardEvent
   | IAuthLogoutEvent
-  | IAuthSessionExpiredEvent;
+  | IAuthSessionExpiredEvent
+  | IAuthIdleDetectedEvent;
 
 export type SystemEventType =
   | ISystemApiOfflineEvent

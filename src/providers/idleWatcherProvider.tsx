@@ -1,30 +1,38 @@
-// src/app/providers/IdleWatcherProvider.tsx
-
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { IdleWatcher } from '../core/auth/idle-watcher';
+import { onAuthEvent } from '../core/auth/auth-bus'; // Importa a função de listener, não a classe
 
-export interface IIdleWatcherProviderProps {
-  children: React.ReactNode;
-  timeoutMs?: number;
-}
+export const IdleWatcherProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const watcherRef = useRef<IdleWatcher | null>(null);
 
-/**
- * Provider global que inicializa o IdleWatcher com base no env.
- */
-export const IdleWatcherProvider: React.FC<IIdleWatcherProviderProps> = ({ children, timeoutMs }) => {
-  const watcherRef = React.useRef<IdleWatcher | null>(null);
+  useEffect(() => {
+    // CORREÇÃO: Construtor sem parâmetros
+    watcherRef.current = new IdleWatcher();
 
-  React.useEffect(() => {
-    const envTimeout = timeoutMs ?? Number(import.meta.env.VITE_IDLE_TIMEOUT_MS ?? 15 * 60 * 1000);
-
-    watcherRef.current = new IdleWatcher({ timeoutMs: envTimeout });
-    watcherRef.current.start();
+    // Usamos onAuthEvent para escutar o barramento global do projeto
+    const unsubscribe = onAuthEvent((event) => {
+      switch (event.type) {
+        case 'auth:login-success':
+        case 'auth:relogin-success':
+        case 'auth:boot-result-authenticated':
+          console.log('[IdleWatcherProvider] Session active, starting watcher...');
+          watcherRef.current?.start();
+          break;
+        
+        case 'auth:logout':
+        case 'auth:session-expired':
+        case 'auth:relogin-failed-hard':
+          console.log('[IdleWatcherProvider] Session ended, stopping watcher...');
+          watcherRef.current?.stop();
+          break;
+      }
+    });
 
     return () => {
       watcherRef.current?.stop();
-      watcherRef.current = null;
+      unsubscribe();
     };
-  }, [timeoutMs]);
+  }, []);
 
   return <>{children}</>;
 };

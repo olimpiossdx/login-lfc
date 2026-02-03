@@ -10,15 +10,26 @@ import { getAccessTokenExpiresAtLS } from '../core/auth/session-expiration';
 type ReloginReason = 'token' | 'inactivity' | 'boot';
 
 export const AuthModalController: React.FC = () => {
-  const isOpenRef = React.useRef(false);
+ const isOpenRef = React.useRef(false);
   const currentReasonRef = React.useRef<ReloginReason>('token');
   const lastBootTimeRef = React.useRef<number | null>(null);
 
+  // Aqui usamos o hook que conecta ao barramento
+  // Precisamos garantir que IAuthGraphEvents inclua 'auth:idle-detected' se for tipado
   const { on } = useGraphBus<IAuthGraphEvents>();
 
   React.useEffect(() => {
     const offBootAuthenticated = on('auth:boot-result-authenticated', () => {
       lastBootTimeRef.current = Date.now();
+    });
+
+    // [NOVO] Listener específico para Inatividade vinda do IdleWatcher
+    const offIdleDetected = on('auth:idle-detected', () => {
+      console.log('[MODAL] idle-detected');
+      // Apenas abre se houver usuário anterior (estava logado)
+      if (getLastUser()) {
+        openReloginModal('inactivity');
+      }
     });
 
     const offSessionExpired = on('auth:session-expired', (event) => {
@@ -32,15 +43,9 @@ export const AuthModalController: React.FC = () => {
       const hasLastUser = !!getLastUser();
       if (!hasLastUser) return;
       
-      // Se for 'inactivity' logo após um boot autenticado, ignora (caso F5 com sessão ok)
-      if (event.reason === 'inactivity' && (lastBootTimeRef.current && Date.now() - lastBootTimeRef.current < 2000 || !lastBootTimeRef.current)) {
-        return;
-      }
-
-      // Opcional: se quiser ser extra defensivo com accessTokenExpiresAt:
+      // Validação de segurança para não abrir modal se o token ainda for válido (race condition)
       const exp = getAccessTokenExpiresAtLS();
       if (exp && event.reason === 'token' && Date.now() < exp) {
-        // teoricamente ainda não expirou, pode ignorar esse evento
         return;
       }
 
@@ -59,13 +64,14 @@ export const AuthModalController: React.FC = () => {
         isOpenRef.current = false;
       }
     });
-    // NÃO fecha modal em relogin-failed-hard; erro fica dentro do modal
+    
     const offReloginFailed = on('auth:relogin-failed-hard', () => {
       console.log('[MODAL] relogin-failed-hard');
     });
 
     return () => {
       offBootAuthenticated();
+      offIdleDetected(); // Cleanup
       offSessionExpired();
       offBootHasHistory();
       offReloginSuccess();
@@ -77,6 +83,7 @@ export const AuthModalController: React.FC = () => {
     if (isOpenRef.current) return;
 
     currentReasonRef.current = reason;
+    isOpenRef.current = true;
 
     showModal({
       title: 'Sessão expirada',
@@ -84,8 +91,6 @@ export const AuthModalController: React.FC = () => {
       size: 'md',
       closeOnBackdropClick: false,
     });
-
-    isOpenRef.current = true;
   };
 
   return null;

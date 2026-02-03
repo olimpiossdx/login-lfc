@@ -8,6 +8,7 @@ import type {
   IAuthReloginFailedHardEvent,
   IAuthLogoutEvent,
   IAuthSessionExpiredEvent,
+  IAuthIdleDetectedEvent,
 } from './auth-events.types';
 
 export interface IAuthGraphEvents {
@@ -19,6 +20,7 @@ export interface IAuthGraphEvents {
   'auth:relogin-failed-hard': IAuthReloginFailedHardEvent;
   'auth:logout': IAuthLogoutEvent;
   'auth:session-expired': IAuthSessionExpiredEvent;
+  'auth:idle-detected': IAuthIdleDetectedEvent;
 }
 
 export type AuthMetadata = {
