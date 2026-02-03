@@ -4,6 +4,7 @@ import React from 'react';
 import { createRoute, Navigate, type RouteComponent } from '@tanstack/react-router';
 import { getCanAccessProtectedRoutes, getIsAccessEvaluated } from '../../core/auth/auth-access';
 import { Spinner } from '../../ui/spinner';
+import { getAttemptedUrl } from '../../core/auth/attempted-url-cache';
 
 interface IProtectedRouteOptions {
   path: string; // pode ser '/home' ou 'home'
@@ -13,7 +14,7 @@ interface IProtectedRouteOptions {
 
 export const createProtectedRoute = (options: IProtectedRouteOptions) => {
   const { component: OriginalComponent, ...rest } = options;
-  
+
   const ProtectedComponent: React.FC = () => {
     const [evaluated, setEvaluated] = React.useState(getIsAccessEvaluated);
     const [canAccess, setCanAccess] = React.useState(getCanAccessProtectedRoutes);
@@ -32,7 +33,6 @@ export const createProtectedRoute = (options: IProtectedRouteOptions) => {
 
     console.log('[GUARD] can, evaluated', canAccess, evaluated);
 
-
     // 1) Boot ainda não decidiu -> spinner, SEM redirect
     if (!evaluated) {
       return (
@@ -45,6 +45,14 @@ export const createProtectedRoute = (options: IProtectedRouteOptions) => {
 
     // 2) Boot decidiu e acesso liberado -> renderiza página protegida
     if (canAccess) {
+      const C = OriginalComponent as React.ComponentType;
+      return <C />;
+    }
+
+    const attempted = getAttemptedUrl();
+
+    // Se tem attemptedUrl, estamos em cenário de re-login: mantém rota e deixa modal atuar
+    if (attempted) {
       const C = OriginalComponent as React.ComponentType;
       return <C />;
     }

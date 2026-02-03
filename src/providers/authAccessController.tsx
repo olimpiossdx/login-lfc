@@ -1,6 +1,6 @@
 // src/app/providers/AuthAccessController.tsx
 
-import { useEffect } from 'react';
+import React from 'react';
 import { useGraphBus } from '../hooks/native-bus';
 import type { IAuthGraphEvents } from '../core/auth/auth-bus.types';
 import { setCanAccessProtectedRoutes } from '../core/auth/auth-access';
@@ -9,13 +9,13 @@ import { setAccessTokenExpiresAtLS } from '../core/auth/session-expiration';
 export const AuthAccessController: React.FC = () => {
   const { on } = useGraphBus<IAuthGraphEvents>();
 
-  useEffect(() => {
+  React.useEffect(() => {
     const offBootNeverLogged = on('auth:boot-result-never-logged', () => {
       setCanAccessProtectedRoutes(false);
     });
 
     const offBootHasHistory = on('auth:boot-result-has-history-but-invalid', () => {
-      setCanAccessProtectedRoutes(false);
+      //setCanAccessProtectedRoutes(false);
     });
 
     const offBootAuthenticated = on('auth:boot-result-authenticated', (event) => {

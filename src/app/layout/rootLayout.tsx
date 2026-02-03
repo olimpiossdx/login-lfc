@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Link } from '@tanstack/react-router';
+import Flex from '../../ui/flex';
+import ThemeToggle from '../../theme';
 
 export interface IRootLayoutProps {
   children: React.ReactNode;
@@ -29,6 +31,9 @@ export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
             Cadastros
           </Link>
         </nav>
+        <Flex>
+          <ThemeToggle />
+        </Flex>
       </header>
 
       {/* Conteúdo */}
