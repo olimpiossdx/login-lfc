@@ -19,12 +19,11 @@ export const AuthModalController: React.FC = () => {
   React.useEffect(() => {
     const offBootAuthenticated = on('auth:boot-result-authenticated', () => {
       lastBootTimeRef.current = Date.now();
-      console.log('lastBootTimeRef', lastBootTimeRef);
     });
 
     const offSessionExpired = on('auth:session-expired', (event) => {
       console.log('[MODAL] session-expired', event);
-      
+
       if (isOpenRef.current) return;
 
       const isOnLogin = window.location.pathname.startsWith('/login');
@@ -32,9 +31,9 @@ export const AuthModalController: React.FC = () => {
 
       const hasLastUser = !!getLastUser();
       if (!hasLastUser) return;
-
+      
       // Se for 'inactivity' logo após um boot autenticado, ignora (caso F5 com sessão ok)
-      if (event.reason === 'inactivity' && lastBootTimeRef.current && Date.now() - lastBootTimeRef.current < 2000) {
+      if (event.reason === 'inactivity' && (lastBootTimeRef.current && Date.now() - lastBootTimeRef.current < 2000 || !lastBootTimeRef.current)) {
         return;
       }
 
@@ -54,7 +53,7 @@ export const AuthModalController: React.FC = () => {
     });
 
     const offReloginSuccess = on('auth:relogin-success', () => {
-       console.log('[MODAL] relogin-success');
+      console.log('[MODAL] relogin-success');
       if (isOpenRef.current) {
         closeModal();
         isOpenRef.current = false;
