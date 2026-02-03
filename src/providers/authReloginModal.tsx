@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import type { ILoginCredentials } from '../core/auth/auth-service.types';
-import { authService } from '../core/auth/auth-service';
-import Alert from '../ui/alert'; // seu Alert [file:29]
-// importe também seus componentes de Form/Layout (Stack, Input, Button etc.)
+import { authService, clearLastUser, getLastUser } from '../core/auth/auth-service';
+import Alert from '../ui/alert';
+import useForm from '../hooks/use-form';
+import { router } from '../router';
 
 export interface IAuthReloginModalProps {
   reason: 'token' | 'inactivity' | 'boot';
@@ -12,21 +13,31 @@ export interface IAuthReloginModalProps {
 }
 
 export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onClose }) => {
-  const [credentials, setCredentials] = useState<ILoginCredentials>({
-    username: '',
-    password: '',
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSwitchUser = () => {
+    // 1) limpar último usuário
+    clearLastUser();
+
+    // 2) fechar modal
+    onClose();
+
+    // 3) navegar para login
+    router.navigate({ to: '/login' });
+  };
+
+  const onSubmit = async (data: ILoginCredentials) => {
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
-      await authService.relogin(credentials);
-      onClose();
+      const response = await authService.relogin(data);
+      if (!response || !response.isSuccess) {
+        return;
+      } else {
+        onClose();
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao autenticar.');
     } finally {
@@ -44,50 +55,54 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
     return 'Faça login para continuar usando o sistema.';
   };
 
+  const { formProps } = useForm({ id: 'login-form-modal', onSubmit });
+  const userName = getLastUser();
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <Alert variant="info" title="Sessão expirada">
-        {getMessage()}
-      </Alert>
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-gray-600">{getMessage()}</p>
 
-      {/* Aqui você usa seus componentes de form/layout */}
-      {/* Exemplo genérico: */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="username">Usuário</label>
-        <input
-          id="username"
-          value={credentials.username}
-          onChange={(e) => setCredentials((prev) => ({ ...prev, username: e.target.value }))}
-          className="input"
-          autoFocus
-        />
-      </div>
+      <form {...formProps} className="flex flex-col gap-3 mt-2">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Usuário</label>
+          <input
+            type="text"
+            name="userName"
+            disabled={!!userName}
+            defaultValue={userName || ''}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            autoFocus
+          />
+        </div>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          value={credentials.password}
-          onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
-          className="input"
-        />
-      </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Senha</label>
+          <input
+            type="password"
+            name="password"
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
 
-      {errorMessage && (
-        <Alert variant="error" title="Erro ao autenticar">
-          {errorMessage}
-        </Alert>
-      )}
+        {errorMessage && (
+          <div className="mt-1">
+            <Alert variant="error">{errorMessage}</Alert>
+          </div>
+        )}
 
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="btn btn-secondary">
-          Cancelar
-        </button>
-        <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-          {isSubmitting ? 'Entrando...' : 'Entrar novamente'}
-        </button>
-      </div>
-    </form>
+        <div className="flex justify-between items-center gap-3 mt-4">
+          <button type="button" className="text-xs text-gray-500 hover:text-gray-700" onClick={handleSwitchUser}>
+            Trocar de conta
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60">
+            {isSubmitting ? 'Entrando...' : 'Entrar novamente'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };

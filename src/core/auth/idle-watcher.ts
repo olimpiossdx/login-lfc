@@ -15,13 +15,7 @@ export interface IIdleWatcher {
 
 type IdleHandler = () => void;
 
-const DEFAULT_EVENTS = [
-  'mousemove',
-  'mousedown',
-  'keydown',
-  'scroll',
-  'touchstart',
-] as const;
+const DEFAULT_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const;
 
 export class IdleWatcher implements IIdleWatcher {
   private timeoutId: number | null = null;
@@ -75,7 +69,14 @@ export class IdleWatcher implements IIdleWatcher {
   };
 
   private onIdle = (): void => {
-    const lastUrl = window.location.pathname + window.location.search;
+    const lastUrl = `${window.location.pathname}${typeof window.location.search === 'string' ? window.location.search : ''}`;
+
+    // Se já estamos na tela de login, não dispara sessão expirada
+    if (lastUrl.startsWith('/login')) {
+      // opcional: parar o watcher para não ficar reiniciando timeout
+      // this.stop();
+      return;
+    }
 
     graph.emit('auth:session-expired', {
       type: 'auth:session-expired',
@@ -83,6 +84,8 @@ export class IdleWatcher implements IIdleWatcher {
       lastUrl,
     });
 
-    this.reset();
+    // Depois de expirar, não re-agenda novo timeout.
+    // Opcional: parar o watcher até relogin.
+    this.stop();
   };
 }

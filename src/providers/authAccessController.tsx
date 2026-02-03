@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useGraphBus } from '../hooks/native-bus';
 import type { IAuthGraphEvents } from '../core/auth/auth-bus.types';
 import { setCanAccessProtectedRoutes } from '../core/auth/auth-access';
+import { setAccessTokenExpiresAtLS } from '../core/auth/session-expiration';
 
 export const AuthAccessController: React.FC = () => {
   const { on } = useGraphBus<IAuthGraphEvents>();
@@ -17,16 +18,19 @@ export const AuthAccessController: React.FC = () => {
       setCanAccessProtectedRoutes(false);
     });
 
-    const offBootAuthenticated = on('auth:boot-result-authenticated', () => {
+    const offBootAuthenticated = on('auth:boot-result-authenticated', (event) => {
       setCanAccessProtectedRoutes(true);
+      setAccessTokenExpiresAtLS(event.accessTokenExpiresAt);
     });
 
-    const offLoginSuccess = on('auth:login-success', () => {
+    const offLoginSuccess = on('auth:login-success', (event) => {
       setCanAccessProtectedRoutes(true);
+      setAccessTokenExpiresAtLS(event.accessTokenExpiresAt);
     });
 
-    const offReloginSuccess = on('auth:relogin-success', () => {
+    const offReloginSuccess = on('auth:relogin-success', (event) => {
       setCanAccessProtectedRoutes(true);
+      setAccessTokenExpiresAtLS(event.accessTokenExpiresAt);
     });
 
     const offReloginFailed = on('auth:relogin-failed-hard', () => {
@@ -50,3 +54,4 @@ export const AuthAccessController: React.FC = () => {
 
   return null;
 };
+

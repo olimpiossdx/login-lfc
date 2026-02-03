@@ -11,8 +11,7 @@ function App() {
   }, []);
 
   React.useEffect(() => {
-    //TODO: ajustar router.state.location para incluir search se necessário.
-    const currentUrl = router.state.location.pathname;//+ router.state.location.search;
+    const currentUrl = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : '' }`;
 
     authService.checkSessionOnBoot(currentUrl);
   }, []);

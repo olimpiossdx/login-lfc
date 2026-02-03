@@ -21,13 +21,13 @@ export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
         </div>
 
         <nav className="flex items-center gap-4 text-sm">
-          <Link
-            to="/home"
-            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-          >
+          <Link to="/home" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
             Home
           </Link>
-          {/* Espaço para futuros itens de menu */}
+
+          <Link to="/cadastros" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+            Cadastros
+          </Link>
         </nav>
       </header>
 

@@ -12,9 +12,10 @@ export interface IAuthBootResultHasHistoryButInvalidEvent {
 }
 
 export interface IAuthBootResultAuthenticatedEvent {
-  type: 'auth:boot-result-authenticated';
+ type: 'auth:boot-result-authenticated';
   attemptedUrl: string | null;
   user: IAuthUser;
+  accessTokenExpiresAt: number;
 }
 
 export interface IAuthLoginSuccessEvent {
@@ -22,11 +23,13 @@ export interface IAuthLoginSuccessEvent {
   user: IAuthUser;
   isFirstLogin: boolean;
   attemptedUrl: string | null;
+  accessTokenExpiresAt: number;
 }
 
 export interface IAuthReloginSuccessEvent {
   type: 'auth:relogin-success';
   user: IAuthUser;
+  accessTokenExpiresAt: number;
 }
 
 export interface IAuthReloginFailedHardEvent {

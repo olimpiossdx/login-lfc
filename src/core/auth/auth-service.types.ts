@@ -54,4 +54,6 @@ export interface IAuthService {
    * @returns true se o refresh teve sucesso, false caso contrário.
    */
   tryRefreshToken(): Promise<boolean>;
+
+  forceSwitchUser(): void;
 }

@@ -1,13 +1,14 @@
 import { api } from '../../service/api';
 import { graph } from '../native-bus';
 import { setAccessToken } from './auth-token-cache';
-import type { IAuthService, IAuthUser, ILoginContext, ILoginCredentials } from './auth-service.types';
+import type { AuthSessionExpiredReasonType, IAuthService, IAuthUser, ILoginContext, ILoginCredentials } from './auth-service.types';
 import type { IAuthBootResultAuthenticatedEvent } from './auth-events.types';
-import type { AuthMetadata, AuthResponse } from '../../service/types';
+import type { AuthMetadata, AuthResponse, IApiResponse } from '../../service/types';
+import { setAccessTokenExpiresAtLS } from './session-expiration';
 
 const LAST_USER_KEY = 'lastUser';
 
-const getLastUser = (): string | null => {
+export const getLastUser = (): string | null => {
   try {
     return localStorage.getItem(LAST_USER_KEY);
   } catch {
@@ -15,7 +16,7 @@ const getLastUser = (): string | null => {
   }
 };
 
-const setLastUser = (login: string): void => {
+export const setLastUser = (login: string): void => {
   try {
     localStorage.setItem(LAST_USER_KEY, login);
   } catch {
@@ -23,7 +24,7 @@ const setLastUser = (login: string): void => {
   }
 };
 
-const clearLastUser = (): void => {
+export const clearLastUser = (): void => {
   try {
     localStorage.removeItem(LAST_USER_KEY);
   } catch {
@@ -36,20 +37,14 @@ export class AuthService implements IAuthService {
    * Boot: tenta restaurar sessão via /auth/refresh-token (cookie HttpOnly).
    */
   async checkSessionOnBoot(currentUrl: string | null): Promise<void> {
-    debugger
     const lastUser = getLastUser();
 
     // tenta refresh
-    const response = await api.post<AuthMetadata>(
-      '/auth/refresh-token',
-      {},
-      {
-        notifyOnError: false,
-      },
-    );
+    const response = await api.post<AuthMetadata>('/auth/refresh-token', {}, { notifyOnError: false });
 
     if (response.isSuccess && response.data) {
       const { user, accessTokenExpiresAt } = response.data;
+      setAccessTokenExpiresAtLS(accessTokenExpiresAt);
 
       // aqui você pode guardar esse metadata em cache se quiser
       // setAuthMetadata({ user, accessTokenExpiresAt, refreshTokenExpiresAt? })
@@ -57,7 +52,8 @@ export class AuthService implements IAuthService {
       const event: IAuthBootResultAuthenticatedEvent = {
         type: 'auth:boot-result-authenticated',
         attemptedUrl: currentUrl,
-        user, // vindo direto do refresh
+        accessTokenExpiresAt: accessTokenExpiresAt,
+        user: user as any, // vindo direto do refresh
       };
       graph.emit(event.type, event);
       return;
@@ -65,11 +61,25 @@ export class AuthService implements IAuthService {
 
     // falhou refresh
     if (!lastUser) {
-      graph.emit('auth:boot-result-never-logged', { type: 'auth:boot-result-never-logged' });
+      // Caso 1: nunca logou neste device -> login full-page
+      graph.emit('auth:boot-result-never-logged', {
+        type: 'auth:boot-result-never-logged',
+      });
     } else {
+      // Caso 2: já logou antes, mas sessão inválida -> MESMO FLUXO do session-expired/token
+      const lastUrl = currentUrl;
+
+      // 2.1: sinaliza boot com histórico inválido (para attemptedUrl)
       graph.emit('auth:boot-result-has-history-but-invalid', {
         type: 'auth:boot-result-has-history-but-invalid',
-        attemptedUrl: currentUrl,
+        attemptedUrl: lastUrl,
+      });
+
+      // 2.2: dispara sessão expirada por token -> abre modal
+      graph.emit('auth:session-expired', {
+        type: 'auth:session-expired',
+        reason: 'token' as AuthSessionExpiredReasonType,
+        lastUrl,
       });
     }
   }
@@ -84,9 +94,10 @@ export class AuthService implements IAuthService {
       throw new Error(response.error?.message || 'Falha no login');
     }
 
-    const { user, accessTokenExpiresAt, refreshTokenExpiresAt } = response.data;
+    const { user, accessTokenExpiresAt } = response.data;
 
     // aqui você pode guardar metadata em cache (opcional por ora)
+    setAccessTokenExpiresAtLS(accessTokenExpiresAt);
 
     const alreadyHadUser = !!getLastUser();
     setLastUser(credentials.userName);
@@ -97,6 +108,7 @@ export class AuthService implements IAuthService {
       user,
       isFirstLogin,
       attemptedUrl: context.attemptedUrl,
+      accessTokenExpiresAt,
     });
   }
 
@@ -105,27 +117,21 @@ export class AuthService implements IAuthService {
    */
   async relogin(credentials: ILoginCredentials): Promise<void> {
     try {
-      const response = await api.post('/auth/login', credentials, {
-        notifyOnError: true,
-      });
+      const response = await api.post<AuthMetadata>('/auth/login', credentials, { notifyOnError: true });
 
       if (!response.isSuccess || !response.data) {
         throw new Error(response.error?.message || 'Falha no login');
       }
 
-      const { user, accessToken } = response.data as {
-        user: IAuthUser;
-        accessToken: string;
-      };
-
-      setAccessToken(accessToken);
-      setLastUser(credentials.username);
+      setAccessTokenExpiresAtLS(response.data.accessTokenExpiresAt);
+      setLastUser(credentials.userName);
 
       graph.emit('auth:relogin-success', {
         type: 'auth:relogin-success',
-        user,
+        user: response.data.user,
+        accessTokenExpiresAt: response.data.accessTokenExpiresAt,
       });
-    } catch {
+    } catch (error) {
       graph.emit('auth:relogin-failed-hard', {
         type: 'auth:relogin-failed-hard',
         reason: 'credentials',
@@ -143,7 +149,7 @@ export class AuthService implements IAuthService {
       // mesmo se der erro, vamos limpar client-side
     }
 
-    setAccessToken(null);
+    setAccessTokenExpiresAtLS(null);
     // Se quiser esquecer o último usuário, descomente:
     // clearLastUser();
 
@@ -187,6 +193,15 @@ export class AuthService implements IAuthService {
     }
 
     return response.data as IAuthUser;
+  }
+
+  forceSwitchUser(): void {
+    clearLastUser();
+    setAccessToken(null); // se estiver usando
+    graph.emit('auth:logout', {
+      type: 'auth:logout',
+      reason: 'user_action',
+    });
   }
 }
 

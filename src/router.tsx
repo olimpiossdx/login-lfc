@@ -15,6 +15,7 @@ import { AuthRoutingListeners } from './router/authRoutingListeners';
 import ToastContainer from './ui/toast/container';
 import { AuthAccessController } from './providers/authAccessController';
 import { createProtectedRoute } from './app/router/createProtectedRoute';
+import { Cadastro } from './features/home/pages/cadastro';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -53,8 +54,13 @@ const homeRoute = createProtectedRoute({
   path: '/home',
   component: HomePage,
 });
+const cadastroRoute = createProtectedRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: '/cadastros',
+  component: Cadastro,
+});
 
-const routeTree = rootRoute.addChildren([  loginRoute,  authLayoutRoute.addChildren([homeRoute])]);
+const routeTree = rootRoute.addChildren([  loginRoute,  authLayoutRoute.addChildren([homeRoute, cadastroRoute])]);
 
 export const router = createRouter({ routeTree });
 
