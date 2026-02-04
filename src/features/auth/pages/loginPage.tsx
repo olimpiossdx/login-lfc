@@ -3,15 +3,57 @@
 import React from 'react';
 import { Lock, LogIn, Mail } from 'lucide-react';
 import { getAttemptedUrl } from '../../../core/auth/attempted-url-cache';
-import { authService } from '../../../core/auth/auth-service';
+import { authService, getLastUser } from '../../../core/auth/auth-service';
 import type { ILoginCredentials, ILoginContext } from '../../../core/auth/auth-service.types';
 import useForm from '../../../hooks/use-form';
 import Alert from '../../../ui/alert';
+import { getAccessToken } from '../../../core/auth/auth-token-cache';
+import { router } from '../../../router';
+import { useGraphBus } from '../../../hooks/native-bus';
+import type { IAuthGraphEvents } from '../../../core/auth/auth-bus.types';
 
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const { on } = useGraphBus<IAuthGraphEvents>();
 
+  // [GUEST GUARD - Verificação Síncrona]
+  const hasToken = !!getAccessToken();
+
+  // [GUEST GUARD - Verificação de Boot Assíncrono]
+  // Se não temos token, mas temos um último usuário, provavelmente o sistema
+  // está tentando restaurar a sessão via Refresh Token no boot.
+  // Devemos aguardar esse processo para evitar o "flash" do formulário.
+  const [isWaitingBoot, setIsWaitingBoot] = React.useState(() => !hasToken && !!getLastUser());
+
+  React.useLayoutEffect(() => {
+    if (hasToken) {
+      router.navigate({ to: '/', replace: true });
+    }
+  }, [hasToken]);
+
+  React.useEffect(() => {
+    if (!isWaitingBoot) return;
+
+    // Se o boot falhar ou determinar que o token é inválido, paramos de esperar
+    const stopWaiting = () => setIsWaitingBoot(false);
+
+    const offNever = on('auth:boot-result-never-logged', stopWaiting);
+    const offInvalid = on('auth:boot-result-has-history-but-invalid', stopWaiting);
+    // Nota: Se 'boot-result-authenticated' ocorrer, o AuthRoutingListeners
+    // fará o redirecionamento, então não precisamos tratar aqui, apenas continuamos "esperando" (renderizando null).
+
+    return () => {
+      offNever();
+      offInvalid();
+    };
+  }, [isWaitingBoot, on]);
+
+  // Bloqueia renderização se já tiver token ou estiver aguardando boot
+  if (hasToken || isWaitingBoot) {
+    return null; // Ou um <LoadingScreen /> se preferir
+  }
+  
   const onSubmit = async (data: ILoginCredentials) => {
     setLoading(true);
     setErrorMessage(null);
@@ -31,7 +73,8 @@ const LoginPage: React.FC = () => {
   };
 
   const { formProps } = useForm({ id: 'login-form-native', onSubmit });
-
+  const userName = getLastUser() || ''; // Preenche com o último usuário para facilitar
+  const readOnly = !!userName; // Se tiver último usuário, bloqueia edição do e-mail
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950">
       <div className="max-w-sm w-full mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 transition-colors">
@@ -54,7 +97,15 @@ const LoginPage: React.FC = () => {
           <div>
             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">E-mail</label>
             <div className="relative">
-              <input name="userName" type="email" className="form-input pl-8" placeholder="seu@email.com" required />
+              <input
+                name="userName"
+                defaultValue={userName}
+                type="email"
+                className="form-input pl-8"
+                placeholder="seu@email.com"
+                required
+                readOnly={readOnly}
+              />
               <Mail className="absolute left-2 top-2.5 text-gray-400 w-5 h-5 z-20 pointer-events-none" />
             </div>
           </div>

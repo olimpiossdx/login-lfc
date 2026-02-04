@@ -16,13 +16,19 @@ export const AuthRoutingListeners: React.FC = () => {
     });
 
     const offHasHistoryInvalid = on('auth:boot-result-has-history-but-invalid', (event) => {
-      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : '' }`;
+      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
 
       setAttemptedUrl(event.attemptedUrl ?? current);
     });
 
+    // [GUEST GUARD] Boot autenticado: Protege contra acesso à tela de login
     const offAuthenticated = on('auth:boot-result-authenticated', () => {
       setAttemptedUrl(null);
+
+      const currentPath = router.state.location.pathname;
+      if (currentPath === '/login') {
+        router.navigate({ to: '/home' as any });
+      }
     });
 
     const offLoginSuccess = on('auth:login-success', (event) => {
@@ -53,7 +59,7 @@ export const AuthRoutingListeners: React.FC = () => {
     });
 
     const offSessionExpired = on('auth:session-expired', (event) => {
-      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : '' }`;
+      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
 
       setAttemptedUrl(event.lastUrl ?? current);
       // Modal controller abre o modal

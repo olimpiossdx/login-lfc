@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User as UserIcon, Lock, Key, AlertTriangle, LogOut } from 'lucide-react';
 import type { ILoginCredentials } from '../core/auth/auth-service.types';
-import { authService, clearLastUser, getLastUser } from '../core/auth/auth-service';
+import { authService, getLastUser } from '../core/auth/auth-service';
 import { router } from '../router';
 import useForm from '../hooks/use-form';
 
@@ -14,14 +14,13 @@ import { ModalContent, ModalFooter, ModalHeader, ModalTitle, ModalDescription } 
 export interface IAuthReloginModalProps {
   reason: 'token' | 'inactivity' | 'boot';
   onClose: () => void;
-}
+};
 
 export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSwitchUser = () => {
-    clearLastUser();
     onClose();
     router.navigate({ to: '/login' });
   };
@@ -132,7 +131,7 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
           variant="ghost"
           size="sm"
           onClick={handleSwitchUser}
-          className="text-gray-500 hover:text-gray-700"
+          className='text-gray-500 hover:text-gray-700'
           leftIcon={<LogOut size={16} />}>
           Trocar de conta
         </Button>

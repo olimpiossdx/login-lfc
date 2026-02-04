@@ -3,7 +3,7 @@ import { graph } from '../native-bus';
 import { setAccessToken } from './auth-token-cache';
 import type { AuthSessionExpiredReasonType, IAuthService, IAuthUser, ILoginContext, ILoginCredentials } from './auth-service.types';
 import type { IAuthBootResultAuthenticatedEvent } from './auth-events.types';
-import type { AuthMetadata, AuthResponse, IApiResponse } from '../../service/types';
+import type { AuthMetadata, AuthResponse } from '../../service/types';
 import { setAccessTokenExpiresAtLS } from './session-expiration';
 
 const LAST_USER_KEY = 'lastUser';
@@ -122,7 +122,7 @@ export class AuthService implements IAuthService {
       if (!response.isSuccess || !response.data) {
         throw new Error(response.error?.message || 'Falha no login');
       }
-
+      setAccessToken(response.data.accessTokenExpiresAt);
       setAccessTokenExpiresAtLS(response.data.accessTokenExpiresAt);
       setLastUser(credentials.userName);
 
@@ -197,7 +197,8 @@ export class AuthService implements IAuthService {
 
   forceSwitchUser(): void {
     clearLastUser();
-    setAccessToken(null); // se estiver usando
+    setAccessToken(null);
+    setAccessTokenExpiresAtLS(null);
     graph.emit('auth:logout', {
       type: 'auth:logout',
       reason: 'user_action',
