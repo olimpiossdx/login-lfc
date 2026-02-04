@@ -149,27 +149,19 @@ export class AuthService implements IAuthService {
       // mesmo se der erro, vamos limpar client-side
     }
 
+    setAccessToken(null);
     setAccessTokenExpiresAtLS(null);
     // Se quiser esquecer o último usuário, descomente:
-    // clearLastUser();
+    clearLastUser();
 
-    graph.emit('auth:logout', {
-      type: 'auth:logout',
-      reason: 'user_action',
-    });
+    graph.emit('auth:logout', { type: 'auth:logout', reason: 'user_action' });
   }
 
   /**
    * Tenta renovar o access-token usando refresh-token em cookie HttpOnly.
    */
   async tryRefreshToken(): Promise<boolean> {
-    const response = await api.post<AuthResponse>(
-      '/auth/refresh-token',
-      {},
-      {
-        notifyOnError: false,
-      },
-    );
+    const response = await api.post<AuthResponse>('/auth/refresh-token', {}, { notifyOnError: false });
 
     // Falha de HTTP ou de negócio
     if (!response.isSuccess) {
@@ -184,9 +176,7 @@ export class AuthService implements IAuthService {
    */
   private async fetchCurrentUser(): Promise<IAuthUser> {
     // Se o refresh já retornar user, você pode trocar essa chamada por um cache.
-    const response = await api.get('/auth/me', {
-      notifyOnError: false,
-    });
+    const response = await api.get('/auth/me', { notifyOnError: false });
 
     if (!response.isSuccess || !response.data) {
       throw new Error(response.error?.message || 'Falha ao obter usuário atual');

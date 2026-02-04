@@ -1,5 +1,3 @@
-// src/features/auth/pages/LoginPage.tsx
-
 import React from 'react';
 import { Lock, LogIn, Mail } from 'lucide-react';
 import { getAttemptedUrl } from '../../../core/auth/attempted-url-cache';
@@ -53,15 +51,12 @@ const LoginPage: React.FC = () => {
   if (hasToken || isWaitingBoot) {
     return null; // Ou um <LoadingScreen /> se preferir
   }
-  
+
   const onSubmit = async (data: ILoginCredentials) => {
     setLoading(true);
     setErrorMessage(null);
 
-    const context: ILoginContext = {
-      attemptedUrl: getAttemptedUrl(),
-    };
-
+    const context: ILoginContext = { attemptedUrl: getAttemptedUrl() };
     try {
       await authService.login(data, context);
       // Não navega aqui; AuthRoutingListeners cuida disso
@@ -75,6 +70,7 @@ const LoginPage: React.FC = () => {
   const { formProps } = useForm({ id: 'login-form-native', onSubmit });
   const userName = getLastUser() || ''; // Preenche com o último usuário para facilitar
   const readOnly = !!userName; // Se tiver último usuário, bloqueia edição do e-mail
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950">
       <div className="max-w-sm w-full mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 transition-colors">
