@@ -4,12 +4,13 @@ import { Link, Outlet } from '@tanstack/react-router';
 import ThemeToggle from '../../theme';
 import Button from '../../ui/button';
 import { authService } from '../../core/auth/auth-service';
+import Flex from '../../ui/flex';
 
 export interface IRootLayoutProps {
   children?: React.ReactNode;
 }
 
-export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
+export const RootLayout: React.FC<React.PropsWithChildren<IRootLayoutProps>> = ({ children }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
@@ -22,7 +23,7 @@ export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
   async function handleLogoutAsync() {
     await authService.logout();
   }
-  
+
   const handleToggleSidebar = () => {
     setSidebarOpen(!isSidebarOpen);
   };
@@ -45,7 +46,7 @@ export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
           transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-screen lg:overflow-y-auto
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700">
+        <div className="h-14 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700">
           <span className="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-cyan-500">JujéUái</span>
           <button onClick={toggleSidebar} className="lg:hidden text-gray-500">
             <X size={24} />
@@ -97,24 +98,31 @@ export const RootLayout: React.FC<IRootLayoutProps> = ({ children }) => {
       {/* 2. MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Navbar */}
-        <header className="h-16 flex items-center justify-between px-4 sm:px-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
+        <Flex
+          as="header"
+          align="center"
+          justify="between"
+          className="h-14 flex px-4 sm:px-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
+          <Flex align="center" gap={4}>
             <button onClick={toggleSidebar} className="lg:hidden text-gray-500 hover:text-gray-700">
               <Menu size={24} />
             </button>
             <h1 className="text-lg font-semibold text-gray-800 dark:text-white hidden sm:block">Dashboard</h1>
-          </div>
+          </Flex>
 
-          <div className="flex items-center gap-4">
+          <Flex align="center" className="gap-4">
             <ThemeToggle />
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
+            <Flex
+              align="center"
+              justify="center"
+              className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
               JS
-            </div>
-          </div>
-        </header>
+            </Flex>
+          </Flex>
+        </Flex>
 
         {/* Page Content Scrollable Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children || <Outlet />}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-4">{children || <Outlet />}</main>
       </div>
     </div>
   );

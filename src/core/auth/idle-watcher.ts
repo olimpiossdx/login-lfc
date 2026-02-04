@@ -6,7 +6,7 @@ export class IdleWatcher {
   private timeoutId: any = null;
   private isIdle: boolean = false;
   private isRunning: boolean = false;
-  
+
   private readonly idleLimitMs: number;
 
   constructor() {
@@ -76,17 +76,19 @@ export class IdleWatcher {
    * Ação disparada quando o tempo estoura.
    */
   private triggerIdle(): void {
-    if (this.isIdle) return; // Segurança contra duplo disparo
+    if (this.isIdle) {
+      return; // Segurança contra duplo disparo
+    }
 
     this.isIdle = true;
-    
+
     // CRÍTICO: Paramos de ouvir o DOM imediatamente.
     // Isso impede que movimentos do rato sobre o modal de login reiniciem o timer,
     // que era o que causava o loop de eventos e logs.
-    this.stop(); 
+    this.stop();
 
     console.warn('[IdleWatcher] Idle detected. Emitting event...');
-    
+
     // Dispara o evento usando a função exportada pelo auth-bus existente
     emitAuthEvent({ type: 'auth:idle-detected' });
   }
@@ -96,8 +98,10 @@ export class IdleWatcher {
    */
   private handleActivity(): void {
     // Se já foi detetado idle, ignoramos interações até que o start() seja chamado novamente
-    if (this.isIdle) return;
-    
+    if (this.isIdle) {
+      return;
+    }
+
     this.resetTimer();
   }
 

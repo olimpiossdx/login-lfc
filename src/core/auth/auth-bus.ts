@@ -5,9 +5,7 @@ export const emitAuthEvent = (event: AuthEventType): void => {
   graph.emit(event.type, event);
 };
 
-export const onAuthEvent = (
-  handler: (event: AuthEventType) => void,
-): (() => void) => {
+export const onAuthEvent = (handler: (event: AuthEventType) => void): (() => void) => {
   // Se seu graph.on aceita string exata:
   const offs = [
     graph.on('auth:boot-result-never-logged', handler as any),
@@ -18,7 +16,7 @@ export const onAuthEvent = (
     graph.on('auth:relogin-failed-hard', handler as any),
     graph.on('auth:logout', handler as any),
     graph.on('auth:session-expired', handler as any),
-     graph.on('auth:idle-detected', handler as any),
+    graph.on('auth:idle-detected', handler as any),
   ];
 
   return () => offs.forEach((off) => off());

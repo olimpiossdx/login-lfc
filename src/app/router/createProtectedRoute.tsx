@@ -61,8 +61,5 @@ export const createProtectedRoute = (options: IProtectedRouteOptions) => {
     return <Navigate to="/login" />;
   };
 
-  return createRoute({
-    ...rest,
-    component: ProtectedComponent,
-  } as any);
+  return createRoute({ ...rest, component: ProtectedComponent } as any);
 };
