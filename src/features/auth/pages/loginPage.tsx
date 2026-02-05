@@ -47,10 +47,6 @@ const LoginPage: React.FC = () => {
     };
   }, [isWaitingBoot, on]);
 
-  // Bloqueia renderização se já tiver token ou estiver aguardando boot
-  if (hasToken || isWaitingBoot) {
-    return null; // Ou um <LoadingScreen /> se preferir
-  }
 
   const onSubmit = async (data: ILoginCredentials) => {
     setLoading(true);
@@ -68,6 +64,12 @@ const LoginPage: React.FC = () => {
   };
 
   const { formProps } = useForm({ id: 'login-form-native', onSubmit });
+  
+  // Bloqueia renderização se já tiver token ou estiver aguardando boot
+  if (hasToken || isWaitingBoot) {
+    return null; // Ou um <LoadingScreen /> se preferir
+  }
+
   const userName = getLastUser() || ''; // Preenche com o último usuário para facilitar
   const readOnly = !!userName; // Se tiver último usuário, bloqueia edição do e-mail
 
