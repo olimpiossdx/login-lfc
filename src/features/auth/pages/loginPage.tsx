@@ -69,7 +69,8 @@ const LoginPage: React.FC = () => {
   if (hasToken || isWaitingBoot) {
     return null; // Ou um <LoadingScreen /> se preferir
   }
-
+  console.log('import.meta.env', import.meta.env);
+  
   const userName = getLastUser() || ''; // Preenche com o último usuário para facilitar
   const readOnly = !!userName; // Se tiver último usuário, bloqueia edição do e-mail
 

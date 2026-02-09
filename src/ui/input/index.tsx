@@ -1,10 +1,10 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useRef, useState } from 'react';
+import React from 'react';
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   name: string;
-  rightIcon?: ReactNode;
-  leftIcon?: ReactNode;
+  rightIcon?: React.ReactNode;
+  leftIcon?: React.ReactNode;
   containerClassName?: string;
   /**
    * - 'outlined': Borda completa (Padrão). Label corta a borda superior.
@@ -12,11 +12,11 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
    * - 'ghost': Sem borda, ideal para tabelas.
    */
   variant?: 'outlined' | 'filled' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  sized?: 'sm' | 'md' | 'lg';
   floatingLabel?: boolean;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
       label,
@@ -35,10 +35,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref,
   ) => {
-    const internalInputRef = useRef<HTMLInputElement>(null);
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const internalInputRef = React.useRef<HTMLInputElement>(null);
+    const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
 
-    const setRef = useCallback(
+    const setRef = React.useCallback(
       (element: HTMLInputElement | null) => {
         internalInputRef.current = element;
         if (typeof ref === 'function') {
@@ -53,7 +53,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const isPasswordType = type === 'password';
     const isCheckOrRadio = type === 'checkbox' || type === 'radio';
 
-    const handleInvalid = (e: React.FormEvent<HTMLInputElement>) => {
+    const handleInvalid = ( e: React.SyntheticEvent<HTMLInputElement, Event>) => {
       e.currentTarget.setAttribute('data-invalid', 'true');
       e.currentTarget.classList.add('animate-shake');
       if (onInvalid) {
@@ -61,7 +61,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       }
     };
 
-    const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
+    const handleInput = (e: React.InputEvent<HTMLInputElement>) => {
       if (e.currentTarget.validity.valid) {
         e.currentTarget.removeAttribute('data-invalid');
       }
