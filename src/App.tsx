@@ -3,7 +3,7 @@ import { initThemeService } from './service/theme';
 
 import { IdleWatcherProvider } from './providers/idleWatcherProvider';
 import { AppRouterProvider, router } from './router';
-import { authService } from './core/auth/auth-service';
+import { boot } from './core/boot';
 
 function App() {
   React.useEffect(() => {
@@ -11,11 +11,8 @@ function App() {
   }, []);
 
   React.useEffect(() => {
-    const currentUrl = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : '' }`;
-
-    authService.checkSessionOnBoot(currentUrl);
+    boot();
   }, []);
-
   return (
     <IdleWatcherProvider>
       <AppRouterProvider />
