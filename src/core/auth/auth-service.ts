@@ -4,7 +4,7 @@ import type { AuthSessionExpiredReasonType, IAuthService, IAuthUser, ILoginConte
 import type { IAuthBootResultAuthenticatedEvent } from './auth-events.types';
 import type { AuthMetadata, AuthResponse } from '../../service/types';
 import { setAccessTokenExpiresAtLS } from './session-expiration';
-import { AuthMetadataCache } from './auth-metadata-cache';
+import { getAuthMetadata, setAuthMetadata, clearAuthMetadata } from './auth-metadata-cache';
 import { authBus } from './auth-bus';
 
 const LAST_USER_KEY = 'lastUser';
