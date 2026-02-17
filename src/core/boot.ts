@@ -18,3 +18,4 @@ export function initAuthListeners(navigate: (path: string, options?: { replace?:
     cleanupBoot();
     cleanupRouting();
   };
+}
