@@ -65,6 +65,13 @@ export const AuthRoutingListeners: React.FC = () => {
       // Modal controller abre o modal
     });
 
+        const offIdleDetected = on('auth:idle-detected', () => {
+      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
+      setAttemptedUrl(current);
+      // Emite evento de sessão expirada por idle para abrir modal
+      // O modal controller (onde ReauthModal é renderizado) escuta esse evento
+    });
+
     return () => {
       offNeverLogged();
       offHasHistoryInvalid();
@@ -74,6 +81,7 @@ export const AuthRoutingListeners: React.FC = () => {
       offReloginFailed();
       offLogout();
       offSessionExpired();
+            offIdleDetected();
     };
   }, [on, router]);
 
