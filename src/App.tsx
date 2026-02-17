@@ -5,6 +5,7 @@ import { IdleWatcherProvider } from './providers/idleWatcherProvider';
 import { AppRouterProvider, router } from './router';
 import { useNavigate } from 'react-router-dom';
 
+function App() {
   const navigate = useNavigate();
   React.useEffect(() => {
   React.useEffect(() => {
