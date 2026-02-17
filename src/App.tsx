@@ -2,17 +2,16 @@ import React from 'react';
 import { initThemeService } from './service/theme';
 
 import { IdleWatcherProvider } from './providers/idleWatcherProvider';
-import { AppRouterProvider, router } from './router';
-import { boot } from './core/boot';
-
+import { AppRouterProvider, router, useNavigate } from './router';import { initAuthListeners } from './core/boot';
 function App() {
+  const navigate = useNavigate();
   React.useEffect(() => {
     initThemeService();
   }, []);
 
   React.useEffect(() => {
-    boot();
-  }, []);
+    const cleanup = initAuthListeners(navigate);  }, [navigate]
+    return cleanup;
   return (
     <IdleWatcherProvider>
       <AppRouterProvider />
