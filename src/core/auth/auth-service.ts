@@ -1,11 +1,11 @@
 import { api } from '../../service/api';
-import { graph } from '../native-bus';
 import { setAccessToken } from './auth-token-cache';
 import type { AuthSessionExpiredReasonType, IAuthService, IAuthUser, ILoginContext, ILoginCredentials } from './auth-service.types';
 import type { IAuthBootResultAuthenticatedEvent } from './auth-events.types';
 import type { AuthMetadata, AuthResponse } from '../../service/types';
 import { setAccessTokenExpiresAtLS } from './session-expiration';
 import { AuthMetadataCache } from './auth-metadata-cache';
+import { authBus } from './auth-bus';
 
 const LAST_USER_KEY = 'lastUser';
 
@@ -56,14 +56,14 @@ export class AuthService implements IAuthService {
         accessTokenExpiresAt: accessTokenExpiresAt,
         user: user as any, // vindo direto do refresh
       };
-      graph.emit(event.type, event);
+      authBus.emit(event.type, event);
       return;
     }
 
     // falhou refresh
     if (!lastUser) {
       // Caso 1: nunca logou neste device -> login full-page
-      graph.emit('auth:boot-result-never-logged', {
+      authBus.emit('auth:boot-result-never-logged', {
         type: 'auth:boot-result-never-logged',
       });
     } else {
@@ -71,13 +71,13 @@ export class AuthService implements IAuthService {
       const lastUrl = currentUrl;
 
       // 2.1: sinaliza boot com histórico inválido (para attemptedUrl)
-      graph.emit('auth:boot-result-has-history-but-invalid', {
+      authBus.emit('auth:boot-result-has-history-but-invalid', {
         type: 'auth:boot-result-has-history-but-invalid',
         attemptedUrl: lastUrl,
       });
 
       // 2.2: dispara sessão expirada por token -> abre modal
-      graph.emit('auth:session-expired', {
+      authBus.emit('auth:session-expired', {
         type: 'auth:session-expired',
         reason: 'token' as AuthSessionExpiredReasonType,
         lastUrl,
@@ -104,8 +104,8 @@ export class AuthService implements IAuthService {
     setLastUser(credentials.userName);
     const isFirstLogin = !alreadyHadUser;
 
-    graph.emit('auth:login-success', {
-      type: 'auth:login-success',
+    authBus.emit('authBus.emauth:logged-init', {
+      type: 'authBus.emauth:logged-init',
       user,
       isFirstLogin,
       attemptedUrl: context.attemptedUrl,
@@ -127,13 +127,13 @@ export class AuthService implements IAuthService {
       setAccessTokenExpiresAtLS(response.data.accessTokenExpiresAt);
       setLastUser(credentials.userName);
 
-      graph.emit('auth:relogin-success', {
+      authBus.emit('auth:relogin-success', {
         type: 'auth:relogin-success',
         user: response.data.user,
         accessTokenExpiresAt: response.data.accessTokenExpiresAt,
       });
     } catch (error) {
-      graph.emit('auth:relogin-failed-hard', {
+      authBus.emit('auth:relogin-failed-hard', {
         type: 'auth:relogin-failed-hard',
         reason: 'credentials',
       });
@@ -155,7 +155,7 @@ export class AuthService implements IAuthService {
     // Se quiser esquecer o último usuário, descomente:
     clearLastUser();
 
-    graph.emit('auth:logout', { type: 'auth:logout', reason: 'user_action' });
+    authBus.emit('auth:logout', { type: 'auth:logout', reason: 'user_action' });
   }
 
   /**
@@ -190,7 +190,7 @@ export class AuthService implements IAuthService {
     clearLastUser();
     setAccessToken(null);
     setAccessTokenExpiresAtLS(null);
-    graph.emit('auth:logout', {
+    authBus.emit('auth:logout', {
       type: 'auth:logout',
       reason: 'user_action',
     });
