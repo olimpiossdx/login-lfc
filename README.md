@@ -173,6 +173,8 @@ Os testes de integração estão em `src/core/__tests__/auth-flow.test.ts`:
 
 ```bash
 npm run test
+npm run test:ui         # Abrir interface visual dos testes
+npm run test:coverage   # Gerar relatório de cobertura
 ```
 
 Cobrem:
