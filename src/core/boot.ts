@@ -8,11 +8,13 @@ import { initAuthRoutingListener } from './auth/authRoutingListener';
  * 1. Inicializa os listeners de eventos
  * 2. Executa o boot de autenticação
  */
-export async function boot() {
-  // 1. Inicializa os listeners ANTES do boot
-  initAuthBootListener();
-  initAuthRoutingListener();
+export function initAuthListeners(navigate: (path: string, options?: { replace?: boolean }) => void) {  // 1. Inicializa os listeners ANTES do boot
+  const cleanupBoot = initAuthBootListener(navigate);
+  const cleanupRouting = initAuthRoutingListener(navigate);
 
-  // 2. Tenta restaurar sessão (via refresh token)
-  await authService.checkSessionOnBoot(window.location.pathname);
-}
+
+  // Retorna função de cleanup que remove todos os listeners
+  return () => {
+    cleanupBoot();
+    cleanupRouting();
+  };
