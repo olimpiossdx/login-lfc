@@ -8,7 +8,12 @@ import { initAuthRoutingListener } from './auth/authRoutingListener';
  * 1. Inicializa os listeners de eventos
  * 2. Executa o boot de autenticação
  */
-export function initAuthListeners(navigate: (path: string, options?: { replace?: boolean }) => void) {  // 1. Inicializa os listeners ANTES do boot
+export function initAuthListeners(router: any) { 
+  // Cria função navigate compatível com os listeners
+  const navigate = (path: string, options?: { replace?: boolean }) => {
+    router.navigate({ to: path, replace: options?.replace });
+  };
+
   const cleanupBoot = initAuthBootListener(navigate);
   const cleanupRouting = initAuthRoutingListener(navigate);
 
