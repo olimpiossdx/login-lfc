@@ -13,3 +13,16 @@ export const setAttemptedUrl = (url: string | null): void => {
  * Retorna a última rota tentada.
  */
 export const getAttemptedUrl = (): string | null => attemptedUrl;
+
+/**
+ * Limpa a URL tentada do cache.
+ */
+export const clearAttemptedUrl = (): void => {
+  attemptedUrl = null;
+};
+
+export const attemptedUrlCache = {
+  set: setAttemptedUrl,
+  get: getAttemptedUrl,
+  clear: clearAttemptedUrl,
+};
