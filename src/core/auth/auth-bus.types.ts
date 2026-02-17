@@ -12,15 +12,19 @@ import type {
 } from './auth-events.types';
 
 export interface IAuthGraphEvents {
-  'auth:boot-result-never-logged': IAuthBootResultNeverLoggedEvent;
-  'auth:boot-result-has-history-but-invalid': IAuthBootResultHasHistoryButInvalidEvent;
-  'auth:boot-result-authenticated': IAuthBootResultAuthenticatedEvent;
-  'auth:login-success': IAuthLoginSuccessEvent;
-  'auth:relogin-success': IAuthReloginSuccessEvent;
-  'auth:relogin-failed-hard': IAuthReloginFailedHardEvent;
+  'auth:boot-resultado-nunca-logado': IAuthBootResultNeverLoggedEvent;
+  'auth:boot-resultado-historico-invalido': IAuthBootResultHasHistoryButInvalidEvent;
+  'auth:boot-resultado-autenticado': IAuthBootResultAuthenticatedEvent;
+  'auth:login-sucesso': IAuthLoginSuccessEvent;
+  'auth:relogin-sucesso': IAuthReloginSuccessEvent;
+  'auth:relogin-falha-grave': IAuthReloginFailedHardEvent;
   'auth:logout': IAuthLogoutEvent;
-  'auth:session-expired': IAuthSessionExpiredEvent;
-  'auth:idle-detected': IAuthIdleDetectedEvent;
+  'auth:sessao-expirada': IAuthSessionExpiredEvent;
+  'auth:inatividade-detectada': IAuthIdleDetectedEvent;
+  // Novos eventos para monitoramento de tokens
+  'auth:access-token-proximo-expiracao': IAuthAccessTokenNearExpirationEvent;
+  'auth:access-token-renovado': IAuthAccessTokenRenewedEvent;
+  'auth:refresh-token-proximo-expiracao': IAuthRefreshTokenNearExpirationEvent;
 }
 
 export type AuthMetadata = {
@@ -32,3 +36,21 @@ export type AuthMetadata = {
   accessTokenExpiresAt: number;
   refreshTokenExpiresAt: number;
 };
+
+// Novos eventos
+export interface IAuthAccessTokenNearExpirationEvent {
+  type: 'auth:access-token-proximo-expiracao';
+  expiresAt: number;
+  timeRemaining: number;
+}
+
+export interface IAuthAccessTokenRenewedEvent {
+  type: 'auth:access-token-renovado';
+  newExpiresAt: number;
+}
+
+export interface IAuthRefreshTokenNearExpirationEvent {
+  type: 'auth:refresh-token-proximo-expiracao';
+  expiresAt: number;
+  timeRemaining: number;
+}
