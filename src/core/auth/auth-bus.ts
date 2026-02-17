@@ -21,3 +21,8 @@ export const onAuthEvent = (handler: (event: AuthEventType) => void): (() => voi
 
   return () => offs.forEach((off) => off());
 };
+
+export const authBus = {
+  emit: emitAuthEvent,
+  on: onAuthEvent,
+};
