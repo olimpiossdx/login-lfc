@@ -9,11 +9,12 @@ function App() {
     React.useEffect(() => {
     initThemeService();
   }, []);
-  
+
   React.useEffect(() => {
     const cleanup = initAuthListeners(router);
     return cleanup;
   }, []);
+  
   return (
     <IdleWatcherProvider>
       <AppRouterProvider />
