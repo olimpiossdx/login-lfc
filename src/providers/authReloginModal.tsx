@@ -1,5 +1,5 @@
 // src/providers/authReloginModal.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { User as UserIcon, Lock, Key, AlertTriangle, LogOut } from 'lucide-react';
 import type { ILoginCredentials } from '../core/auth/auth-service.types';
 import { authService } from '../core/auth/auth-service';
@@ -17,20 +17,20 @@ import { getAuthMetadata } from '../core/auth/auth-metadata-cache';
 export interface IAuthReloginModalProps {
   reason: 'token' | 'inactivity'; // Removemos o 'boot' pois o checkSessionOnBoot agora resolve síncrono ou redireciona
   onClose: () => void;
-};
+}
 
 export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onClose }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   // Lê o utilizador trancado a partir do cache centralizado
   const metadata = getAuthMetadata();
-  const userName = metadata?.user?.username || ''; 
+  const userName = metadata?.user?.username || '';
 
   const handleSwitchUser = () => {
     // Fecha o modal e faz o logout explícito (limpa cache e emite 'auth:deslogado', atirando para o /login)
     onClose();
-    authService.logout(); 
+    authService.logout();
   };
 
   const onSubmit = async (data: ILoginCredentials) => {
@@ -39,8 +39,8 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
 
     try {
       // Como o form faz override aos estilos/inputs, garantimos que o nome de utilizador certo é passado
-      const credentialsWithUser = { ...data, userName }; 
-      
+      const credentialsWithUser = { ...data, userName };
+
       await authService.relogin(credentialsWithUser);
       // O 'authService.relogin' já emite 'auth:logado' com os novos tempos.
       // O 'AuthModalController' está a escutar esse evento e fechará o modal automaticamente.
@@ -60,7 +60,7 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
         color: 'text-amber-600',
       };
     }
-    
+
     return {
       title: 'Sessão Expirada',
       desc: 'Seu token de acesso venceu. Faça login novamente.',
@@ -84,8 +84,14 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
       </ModalHeader>
 
       <ModalContent>
+        {/* Feedback de Erro */}
+        {errorMessage && (
+          <Alert variant="error" icon={<AlertTriangle size={16} />} title="Erro de Autenticação" onClose={() => setErrorMessage(null)}>
+            {errorMessage}
+          </Alert>
+        )}
+
         <form {...formProps} className="space-y-4 pt-2">
-          {/* Campo de Usuário (Readonly) */}
           <div className="relative">
             <Input
               label="Usuário"
@@ -93,7 +99,7 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
               defaultValue={userName}
               disabled={!!userName}
               leftIcon={<UserIcon size={18} className="text-gray-400" />}
-              variant="filled" 
+              variant="filled"
               className="bg-gray-50 dark:bg-gray-900/50"
             />
             {!!userName && (
@@ -113,13 +119,6 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
             autoFocus
             required
           />
-
-          {/* Feedback de Erro */}
-          {errorMessage && (
-            <Alert variant="error" icon={<AlertTriangle size={16} />} title="Erro de Autenticação">
-              {errorMessage}
-            </Alert>
-          )}
         </form>
       </ModalContent>
 
@@ -129,17 +128,12 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
           variant="ghost"
           size="sm"
           onClick={handleSwitchUser}
-          className='text-gray-500 hover:text-gray-700'
+          className="text-gray-500 hover:text-gray-700"
           leftIcon={<LogOut size={16} />}>
           Trocar de conta
         </Button>
 
-        <Button
-          type="submit"
-          form="login-form-modal" 
-          isLoading={isSubmitting}
-          variant="primary"
-          className="w-full sm:w-auto px-8">
+        <Button type="submit" form="login-form-modal" isLoading={isSubmitting} variant="primary" className="w-full sm:w-auto px-8">
           {isSubmitting ? 'Validando...' : 'Desbloquear'}
         </Button>
       </ModalFooter>
