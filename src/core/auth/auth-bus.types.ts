@@ -1,34 +1,47 @@
 // src/core/auth/auth-bus.types.ts
-import type {
-  IAuthBootResultNeverLoggedEvent,
-  IAuthBootResultHasHistoryButInvalidEvent,
-  IAuthBootResultAuthenticatedEvent,
-  IAuthLoginSuccessEvent,
-  IAuthReloginSuccessEvent,
-  IAuthReloginFailedHardEvent,
-  IAuthLogoutEvent,
-  IAuthSessionExpiredEvent,
-  IAuthIdleDetectedEvent,
-} from './auth-events.types';
+import type { AuthMetadata } from '../../service/types';
 
 export interface IAuthGraphEvents {
-  'auth:boot-result-never-logged': IAuthBootResultNeverLoggedEvent;
-  'auth:boot-result-has-history-but-invalid': IAuthBootResultHasHistoryButInvalidEvent;
-  'auth:boot-result-authenticated': IAuthBootResultAuthenticatedEvent;
-  'auth:login-success': IAuthLoginSuccessEvent;
-  'auth:relogin-success': IAuthReloginSuccessEvent;
-  'auth:relogin-failed-hard': IAuthReloginFailedHardEvent;
-  'auth:logout': IAuthLogoutEvent;
-  'auth:session-expired': IAuthSessionExpiredEvent;
-  'auth:idle-detected': IAuthIdleDetectedEvent;
-}
-
-export type AuthMetadata = {
-  user: {
-    id: number;
-    nome: string;
-    username: string;
+  /**
+   * Disparado quando o usuário entra na aplicação com sucesso
+   * (seja por login manual ou boot validado com token ativo).
+   */
+  'auth:logado': {
+    type: 'auth:logado';
+    metadata: AuthMetadata;
+    isFirstLogin?: boolean;
+    attemptedUrl?: string | null;
   };
-  accessTokenExpiresAt: number;
-  refreshTokenExpiresAt: number;
-};
+
+  /**
+   * Disparado silenciosamente pelo Monitor de Token ou Interceptor
+   * quando o refresh proativo/reativo dá certo no background.
+   */
+  'auth:renovado': {
+    type: 'auth:renovado';
+    metadata: AuthMetadata;
+  };
+
+  /**
+   * Disparado quando o access_token vence e o refresh_token também falha ou já venceu.
+   * Usado para subir o Modal de Re-login.
+   */
+  'auth:sessao-expirada': {
+    type: 'auth:sessao-expirada';
+  };
+
+  /**
+   * Disparado por ação explícita do usuário ao clicar em "Sair".
+   */
+  'auth:deslogado': {
+    type: 'auth:deslogado';
+  };
+
+  /**
+   * Disparado pelo Watcher ao detectar ausência de interação do usuário.
+   * Usado para subir o Modal de Re-login protegendo a tela.
+   */
+  'auth:inatividade': {
+    type: 'auth:inatividade';
+  };
+}

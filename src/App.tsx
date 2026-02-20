@@ -13,7 +13,8 @@ function App() {
   React.useEffect(() => {
     const currentUrl = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : '' }`;
 
-    authService.checkSessionOnBoot(currentUrl);
+    //authService.checkSessionOnBoot(currentUrl);
+    authService.checkSessionOnBoot(window.location.pathname);
   }, []);
 
   return (

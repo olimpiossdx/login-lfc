@@ -1,8 +1,8 @@
-// src/app/router/authRoutingListeners.tsx
+// src/router/authRoutingListeners.tsx
 
 import { useEffect } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { useGraphBus } from '../hooks/native-bus'; // ajuste o path conforme seu projeto
+import { useGraphBus } from '../hooks/native-bus';
 import { getAttemptedUrl, setAttemptedUrl } from '../core/auth/attempted-url-cache';
 import type { IAuthGraphEvents } from '../core/auth/auth-bus.types';
 
@@ -11,69 +11,47 @@ export const AuthRoutingListeners: React.FC = () => {
   const { on } = useGraphBus<IAuthGraphEvents>();
 
   useEffect(() => {
-    const offNeverLogged = on('auth:boot-result-never-logged', () => {
-      router.navigate({ to: '/login' });
-    });
-
-    const offHasHistoryInvalid = on('auth:boot-result-has-history-but-invalid', (event) => {
-      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
-
-      setAttemptedUrl(event.attemptedUrl ?? current);
-    });
-
-    // [GUEST GUARD] Boot autenticado: Protege contra acesso à tela de login
-    const offAuthenticated = on('auth:boot-result-authenticated', () => {
+    // 1. Quando alguém entra com sucesso
+    const offLogado = on('auth:logado', (event) => {
+      const cachedUrl = getAttemptedUrl();
+      const target = event.attemptedUrl || cachedUrl;
+      
       setAttemptedUrl(null);
 
       const currentPath = router.state.location.pathname;
-      if (currentPath === '/login') {
-        router.navigate({ to: '/home' as any });
+      
+      // Proteção de Convidado: Se está na página de login, atiramos para o destino ou home
+      if (currentPath === '/login' || event.isFirstLogin) {
+        const destination = target && target !== '/login' ? target : '/home';
+        router.navigate({ to: destination as any });
       }
     });
 
-    const offLoginSuccess = on('auth:login-success', (event) => {
-      const cached = getAttemptedUrl();
-      const target = event.attemptedUrl || cached;
-
-      if (event.isFirstLogin || !target) {
-        router.navigate({ to: '/home' as any });
-      } else {
-        router.navigate({ to: target as any });
-      }
-
-      setAttemptedUrl(null);
-    });
-
-    const offReloginSuccess = on('auth:relogin-success', () => {
-      // Não navega; só fecha modal (feito no AuthModalController)
-    });
-
-    const offReloginFailed = on('auth:relogin-failed-hard', () => {
+    // 2. Quando clica no botão "Sair"
+    const offDeslogado = on('auth:deslogado', () => {
       setAttemptedUrl(null);
       router.navigate({ to: '/login' });
     });
 
-    const offLogout = on('auth:logout', () => {
-      setAttemptedUrl(null);
-      router.navigate({ to: '/login' });
-    });
-
-    const offSessionExpired = on('auth:session-expired', (event) => {
+    // 3. Quando a sessão morre
+    const offSessaoExpirada = on('auth:sessao-expirada', () => {
       const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
+      setAttemptedUrl(current);
+      // Aqui NÃO fazemos router.navigate! Deixamos a página quieta para o AuthModalController poder sobrepor o Modal de Re-login.
+    });
 
-      setAttemptedUrl(event.lastUrl ?? current);
-      // Modal controller abre o modal
+    // 4. Quando o utilizador adormece à frente do teclado
+    const offInatividade = on('auth:inatividade', () => {
+      const current = `${router.state.location.pathname}${typeof router.state.location.search === 'string' ? router.state.location.search : ''}`;
+      setAttemptedUrl(current);
+      // Sem navegação também. O Modal assumirá o controlo.
     });
 
     return () => {
-      offNeverLogged();
-      offHasHistoryInvalid();
-      offAuthenticated();
-      offLoginSuccess();
-      offReloginSuccess();
-      offReloginFailed();
-      offLogout();
-      offSessionExpired();
+      offLogado();
+      offDeslogado();
+      offSessaoExpirada();
+      offInatividade();
     };
   }, [on, router]);
 

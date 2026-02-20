@@ -1,124 +1,66 @@
 // src/core/auth/idle-watcher.ts
-
-import { emitAuthEvent } from './auth-bus';
+import { graph } from '../native-bus';
+import { getAuthMetadata } from './auth-metadata-cache';
 
 export class IdleWatcher {
-  private timeoutId: any = null;
-  private isIdle: boolean = false;
-  private isRunning: boolean = false;
+  private timeoutId: any | null = null;
+  // Retirámos o 'mousemove' por ser demasiado agressivo para a CPU.
+  // Cliques, toques e teclas são mais do que suficientes para provar que há um humano ali.
+  private events = ['mousedown', 'keydown', 'scroll', 'touchstart']; 
+  private currentTimeoutMs: number = 15 * 60 * 1000; // Tempo seguro por omissão
+  private resetBind = this.reset.bind(this);
 
-  private readonly idleLimitMs: number;
-
-  constructor() {
-    // Bind para garantir o contexto do 'this' nos event listeners
-    this.handleActivity = this.handleActivity.bind(this);
-
-    // Leitura da configuração de tempo com fallback para 15 minutos
-    const envMinutes = Number(import.meta.env.VITE_IDLE_TIMEOUT_MS);
-    const minutes = !isNaN(envMinutes) && envMinutes > 0 ? envMinutes : 15;
-    this.idleLimitMs = minutes * 60 * 1000;
+  start() {
+    this.calculateDynamicTimeout();
+    this.setupListeners();
+    this.reset();
   }
 
-  /**
-   * Inicia o monitoramento.
-   * Deve ser chamado pelo Provider quando o utilizador loga ou re-autentica com sucesso.
-   */
-  public start(): void {
-    // Se já estiver a correr, não faz nada para evitar duplicar timers
-    if (this.isRunning) {
-      return;
-    }
-
-    this.isRunning = true;
-    this.isIdle = false;
-    this.addListeners();
-    this.resetTimer();
-    console.log(`[IdleWatcher] Started (Limit: ${this.idleLimitMs}ms)`);
-  }
-
-  /**
-   * Para o monitoramento.
-   * Deve ser chamado:
-   * 1. No Logout
-   * 2. Imediatamente ao detectar Idle (para evitar loops)
-   */
-  public stop(): void {
-    this.isRunning = false;
+  stop() {
     this.removeListeners();
-    this.clearTimer();
-    console.log('[IdleWatcher] Stopped');
-  }
-
-  /**
-   * Reinicia o contador se estiver a correr e não estiver idle.
-   */
-  private resetTimer(): void {
-    this.clearTimer();
-
-    // Se não devia estar a correr ou já disparou o idle, não agenda novo timer
-    if (!this.isRunning || this.isIdle) {
-      return;
-    }
-
-    this.timeoutId = setTimeout(() => {
-      this.triggerIdle();
-    }, this.idleLimitMs);
-  }
-
-  private clearTimer(): void {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
   }
 
-  /**
-   * Ação disparada quando o tempo estoura.
-   */
-  private triggerIdle(): void {
-    if (this.isIdle) {
-      return; // Segurança contra duplo disparo
+  // Calculamos a matemática pesada (cache e .env) apenas quando o vigia é ligado, e não em cada clique!
+  private calculateDynamicTimeout() {
+    const metadata = getAuthMetadata();
+    if (!metadata) return;
+
+    const now = Date.now();
+    const timeToRefreshDeath = metadata.refreshTokenExpiresAt - now;
+    
+    // Lê a variável de ambiente
+    const envMinutes = Number(import.meta.env.VITE_IDLE_TIMEOUT_IN_MINUTES) || 15;
+    this.currentTimeoutMs = envMinutes * 60 * 1000; 
+    
+    // Regra Dinâmica
+    if (timeToRefreshDeath > 0 && timeToRefreshDeath < this.currentTimeoutMs) {
+      this.currentTimeoutMs = Math.max(timeToRefreshDeath / 2, 60 * 1000); 
     }
+  }
 
-    this.isIdle = true;
+  private setupListeners() {
+    this.events.forEach((evt) => window.addEventListener(evt, this.resetBind));
+  }
 
-    // CRÍTICO: Paramos de ouvir o DOM imediatamente.
-    // Isso impede que movimentos do rato sobre o modal de login reiniciem o timer,
-    // que era o que causava o loop de eventos e logs.
+  private removeListeners() {
+    this.events.forEach((evt) => window.removeEventListener(evt, this.resetBind));
+  }
+
+  // O Reset agora é super leve, apenas reinicia o temporizador
+  private reset() {
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+
+    this.timeoutId = setTimeout(() => {
+      this.triggerIdle();
+    }, this.currentTimeoutMs);
+  }
+
+  private triggerIdle() {
     this.stop();
-
-    console.warn('[IdleWatcher] Idle detected. Emitting event...');
-
-    // Dispara o evento usando a função exportada pelo auth-bus existente
-    emitAuthEvent({ type: 'auth:idle-detected' });
-  }
-
-  /**
-   * Handler de eventos do DOM.
-   */
-  private handleActivity(): void {
-    // Se já foi detetado idle, ignoramos interações até que o start() seja chamado novamente
-    if (this.isIdle) {
-      return;
-    }
-
-    this.resetTimer();
-  }
-
-  private addListeners(): void {
-    // Passivo true melhora a performance no scroll
-    window.addEventListener('mousemove', this.handleActivity, { passive: true });
-    window.addEventListener('mousedown', this.handleActivity, { passive: true });
-    window.addEventListener('keypress', this.handleActivity, { passive: true });
-    window.addEventListener('touchmove', this.handleActivity, { passive: true });
-    window.addEventListener('scroll', this.handleActivity, { passive: true });
-  }
-
-  private removeListeners(): void {
-    window.removeEventListener('mousemove', this.handleActivity);
-    window.removeEventListener('mousedown', this.handleActivity);
-    window.removeEventListener('keypress', this.handleActivity);
-    window.removeEventListener('touchmove', this.handleActivity);
-    window.removeEventListener('scroll', this.handleActivity);
+    graph.emit('auth:inatividade', { type: 'auth:inatividade' });
   }
 }

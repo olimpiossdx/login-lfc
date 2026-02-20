@@ -1,52 +1,31 @@
+// src/features/auth/pages/loginPage.tsx
 import React from 'react';
 import { Lock, LogIn, Mail } from 'lucide-react';
 import { getAttemptedUrl } from '../../../core/auth/attempted-url-cache';
-import { authService, getLastUser } from '../../../core/auth/auth-service';
+import { authService } from '../../../core/auth/auth-service';
 import type { ILoginCredentials, ILoginContext } from '../../../core/auth/auth-service.types';
 import useForm from '../../../hooks/use-form';
 import Alert from '../../../ui/alert';
-import { getAccessToken } from '../../../core/auth/auth-token-cache';
+import { getAuthMetadata } from '../../../core/auth/auth-metadata-cache';
 import { router } from '../../../router';
-import { useGraphBus } from '../../../hooks/native-bus';
-import type { IAuthGraphEvents } from '../../../core/auth/auth-bus.types';
 
 const LoginPage: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const { on } = useGraphBus<IAuthGraphEvents>();
 
-  // [GUEST GUARD - Verificação Síncrona]
-  const hasToken = !!getAccessToken();
-
-  // [GUEST GUARD - Verificação de Boot Assíncrono]
-  // Se não temos token, mas temos um último usuário, provavelmente o sistema
-  // está tentando restaurar a sessão via Refresh Token no boot.
-  // Devemos aguardar esse processo para evitar o "flash" do formulário.
-  const [isWaitingBoot, setIsWaitingBoot] = React.useState(() => !hasToken && !!getLastUser());
+  const metadata = getAuthMetadata();
+  
+  // Verifica se a sessão é TOTALMENTE válida
+  const hasValidSession = !!metadata?.user && metadata.refreshTokenExpiresAt > Date.now();
+  
+  // Verifica se a sessão está PAUSADA (tem usuário, mas o token expirou)
+  const lockedUser = !hasValidSession ? metadata?.user?.username : '';
 
   React.useLayoutEffect(() => {
-    if (hasToken) {
-      router.navigate({ to: '/', replace: true });
+    if (hasValidSession) {
+      router.navigate({ to: '/home', replace: true });
     }
-  }, [hasToken]);
-
-  React.useEffect(() => {
-    if (!isWaitingBoot) return;
-
-    // Se o boot falhar ou determinar que o token é inválido, paramos de esperar
-    const stopWaiting = () => setIsWaitingBoot(false);
-
-    const offNever = on('auth:boot-result-never-logged', stopWaiting);
-    const offInvalid = on('auth:boot-result-has-history-but-invalid', stopWaiting);
-    // Nota: Se 'boot-result-authenticated' ocorrer, o AuthRoutingListeners
-    // fará o redirecionamento, então não precisamos tratar aqui, apenas continuamos "esperando" (renderizando null).
-
-    return () => {
-      offNever();
-      offInvalid();
-    };
-  }, [isWaitingBoot, on]);
-
+  }, [hasValidSession]);
 
   const onSubmit = async (data: ILoginCredentials) => {
     setLoading(true);
@@ -54,8 +33,12 @@ const LoginPage: React.FC = () => {
 
     const context: ILoginContext = { attemptedUrl: getAttemptedUrl() };
     try {
-      await authService.login(data, context);
-      // Não navega aqui; AuthRoutingListeners cuida disso
+      if (lockedUser) {
+        // Se a conta está trancada, injetamos o utilizador e chamamos o relogin
+        await authService.relogin({ ...data, userName: lockedUser });
+      } else {
+        await authService.login(data, context);
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao autenticar.');
     } finally {
@@ -65,14 +48,9 @@ const LoginPage: React.FC = () => {
 
   const { formProps } = useForm({ id: 'login-form-native', onSubmit });
   
-  // Bloqueia renderização se já tiver token ou estiver aguardando boot
-  if (hasToken || isWaitingBoot) {
-    return null; // Ou um <LoadingScreen /> se preferir
+  if (hasValidSession) {
+    return null; 
   }
-  console.log('import.meta.env', import.meta.env);
-  
-  const userName = getLastUser() || ''; // Preenche com o último usuário para facilitar
-  const readOnly = !!userName; // Se tiver último usuário, bloqueia edição do e-mail
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950">
@@ -81,8 +59,12 @@ const LoginPage: React.FC = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 mb-3">
             <LogIn size={24} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Acesso</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Informe suas credenciais para entrar.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {lockedUser ? 'Sessão Pausada' : 'Acesso'}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {lockedUser ? 'Confirme sua senha para continuar.' : 'Informe suas credenciais para entrar.'}
+          </p>
         </div>
 
         {errorMessage && (
@@ -92,28 +74,33 @@ const LoginPage: React.FC = () => {
         )}
 
         <form {...formProps} className="space-y-5 mt-4">
-          {/* Campo E-mail */}
           <div>
             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">E-mail</label>
             <div className="relative">
               <input
                 name="userName"
-                defaultValue={userName}
                 type="email"
-                className="form-input pl-8"
+                defaultValue={lockedUser || ''}
+                readOnly={!!lockedUser}
+                className={`form-input pl-8 w-full border rounded py-2 ${lockedUser ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                 placeholder="seu@email.com"
                 required
-                readOnly={readOnly}
               />
               <Mail className="absolute left-2 top-2.5 text-gray-400 w-5 h-5 z-20 pointer-events-none" />
             </div>
           </div>
 
-          {/* Campo Senha */}
           <div>
             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Senha</label>
             <div className="relative">
-              <input name="password" type="password" className="form-input pl-8" placeholder="••••••" required />
+              <input 
+                name="password" 
+                type="password" 
+                className="form-input pl-8 w-full border rounded py-2" 
+                placeholder="••••••" 
+                required 
+                autoFocus={!!lockedUser}
+              />
               <Lock className="absolute left-2 top-2.5 text-gray-400 w-5 h-5 z-20 pointer-events-none" />
             </div>
           </div>
@@ -125,12 +112,24 @@ const LoginPage: React.FC = () => {
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Entrando...
+                Validando...
               </>
             ) : (
-              'Entrar no Sistema'
+              lockedUser ? 'Desbloquear' : 'Entrar no Sistema'
             )}
           </button>
+          
+          {/* Botão extra para limpar a sessão se não for o utilizador bloqueado */}
+          {lockedUser && (
+            <div className="text-center mt-4">
+              <button 
+                type="button" 
+                onClick={() => authService.logout()} 
+                className="text-sm text-gray-500 hover:underline">
+                Entrar com outra conta
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
