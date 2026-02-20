@@ -13,7 +13,7 @@ import { Cadastro } from './features/home/pages/cadastro';
 
 // 1. Importar o nosso Provider de Inatividade
 import { IdleWatcherProvider } from './providers/idleWatcherProvider';
-import CadastroCliente from './features/home/pages/cadastro/cliente/cadastro-cliente';
+import CadastroCliente from './features/home/pages/cadastro/cliente';
 
 const rootRoute = createRootRoute({
   component: () => (

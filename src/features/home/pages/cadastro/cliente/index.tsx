@@ -14,12 +14,15 @@ const CadastroCliente: React.FC = () => {
           Adicionar
         </Button>
       </Flex>
+      <form>
+
       <Flex align="end">
         <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
-        <Button className="ml-2" variant="primary">
+        <Button type='submit' className="ml-2" variant="primary">
           Pesquise
         </Button>
       </Flex>
+      </form>
       <Flex></Flex>
     </>
   );
