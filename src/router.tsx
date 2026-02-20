@@ -1,15 +1,9 @@
 // src/router.tsx
 import React from 'react';
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterProvider,
-  Outlet,
-} from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, RouterProvider, Outlet } from '@tanstack/react-router';
 import { RootLayout } from './app/layout/rootLayout';
 
-import LoginPage  from './features/auth/pages/loginPage';
+import LoginPage from './features/auth/pages/loginPage';
 import { HomePage } from './features/home/pages/homePage';
 import { AuthModalController } from './providers/authModalController';
 import { AuthRoutingListeners } from './router/authRoutingListeners';
@@ -18,7 +12,8 @@ import { createProtectedRoute } from './app/router/createProtectedRoute';
 import { Cadastro } from './features/home/pages/cadastro';
 
 // 1. Importar o nosso Provider de Inatividade
-import { IdleWatcherProvider } from './providers/idleWatcherProvider'; 
+import { IdleWatcherProvider } from './providers/idleWatcherProvider';
+import CadastroCliente from './features/home/pages/cadastro/cliente/cadastro-cliente';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -64,10 +59,13 @@ const cadastroRoute = createProtectedRoute({
   component: Cadastro,
 });
 
-const routeTree = rootRoute.addChildren([  
-  loginRoute,  
-  authLayoutRoute.addChildren([homeRoute, cadastroRoute])
-]);
+const cadastroClienteRoute = createProtectedRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: '/cadastros/clientes',
+  component: CadastroCliente,
+});
+
+const routeTree = rootRoute.addChildren([loginRoute, authLayoutRoute.addChildren([homeRoute, cadastroRoute, cadastroClienteRoute])]);
 
 export const router = createRouter({ routeTree });
 

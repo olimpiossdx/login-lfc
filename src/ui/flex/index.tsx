@@ -1,7 +1,6 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 
-// 1. Dicionários de Mapeamento (Substituem os ternários longos e confusos)
 const directionMap = {
   row: 'flex-row',
   'row-reverse': 'flex-row-reverse',
@@ -26,51 +25,47 @@ const justifyMap = {
   evenly: 'justify-evenly',
 };
 
-// 2. Prevenção de perda de classes no Tailwind: mapeamento dos gaps numéricos mais comuns
-// Se precisar de gaps arbitrários maiores/quebrados, o desenvolvedor usa a prop `gapRaw`
 const gapMap: Record<number, string> = {
   0: 'gap-0', 1: 'gap-1', 2: 'gap-2', 3: 'gap-3', 4: 'gap-4',
   5: 'gap-5', 6: 'gap-6', 8: 'gap-8', 10: 'gap-10', 12: 'gap-12',
 };
 
-// 3. Tipagem Polimórfica Segura: Garante que as props nativas da tag escolhida (ex: onClick, type) funcionem
+// Usamos Omit para evitar conflitos de tipagem entre nossas props e as props nativas do HTML
 export type FlexProps<T extends React.ElementType> = {
   as?: T;
-  inline?: boolean; // Adicionado: prop que estava sendo desestruturada mas não existia na interface
+  inline?: boolean;
   direction?: keyof typeof directionMap;
   wrap?: boolean;
-  gap?: keyof typeof gapMap; 
+  gap?: keyof typeof gapMap;
   gapRaw?: string;
   align?: keyof typeof alignMap;
   justify?: keyof typeof justifyMap;
   className?: string;
-} & React.ComponentPropsWithoutRef<T>;
+} & Omit<React.ComponentPropsWithoutRef<T>, 'direction' | 'wrap' | 'align' | 'justify' | 'className'>;
 
-// Hack de tipagem para o forwardRef funcionar perfeitamente com componentes polimórficos
-type FlexComponent = <T extends React.ElementType = 'div'>(
+export type FlexComponent = <T extends React.ElementType = 'div'>(
   props: FlexProps<T> & { ref?: React.ComponentPropsWithRef<T>['ref'] }
 ) => React.ReactElement | null;
 
-const Flex: FlexComponent = React.forwardRef(
+// Criamos o componente interno sem tipar a variável diretamente
+const FlexInner = React.forwardRef(
   <T extends React.ElementType = 'div'>(
-    { 
-      as, 
-      inline, 
-      direction = 'row', 
-      wrap = false, 
-      gap, 
-      gapRaw, 
-      align, 
-      justify, 
-      className, 
-      ...props 
+    {
+      as,
+      inline,
+      direction = 'row',
+      wrap = false,
+      gap,
+      gapRaw,
+      align,
+      justify,
+      className,
+      ...props
     }: FlexProps<T>,
     ref: React.ForwardedRef<any>
   ) => {
     const Comp = as || 'div';
     const base = inline ? 'inline-flex' : 'flex';
-    
-    // Resolve o bug do null/undefined e previne erro de interpolação do Tailwind
     const finalGapClass = gapRaw || (gap !== undefined ? gapMap[gap] : '');
 
     return (
@@ -83,7 +78,7 @@ const Flex: FlexComponent = React.forwardRef(
           finalGapClass,
           align && alignMap[align],
           justify && justifyMap[justify],
-          className // O tailwind-merge (cn) aqui vai garantir que se você passar `h-full` num Flex de col, ele respeite!
+          className
         )}
         {...props}
       />
@@ -91,6 +86,9 @@ const Flex: FlexComponent = React.forwardRef(
   }
 );
 
-Flex.displayName = 'Flex';
+FlexInner.displayName = 'Flex';
+
+// O "pulo do gato": aplicamos a tipagem polimórfica aqui
+const Flex = FlexInner as FlexComponent;
 
 export default Flex;
