@@ -2,14 +2,15 @@ import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useGraphBus } from '../hooks/native-bus';
 import { type Theme, getCurrentTheme } from '../service/theme';
+import Button from '../ui/button';
 
 // Interface local simplificada ou importada de events.ts
-interface ThemeEvents {
+interface IThemeEvents {
   'sys:theme_change': { theme: 'light' | 'dark' };
 }
 
 const ThemeToggle = () => {
-  const { emit, on } = useGraphBus<ThemeEvents>();
+  const { emit, on } = useGraphBus<IThemeEvents>();
   const [theme, setTheme] = React.useState<Theme>(getCurrentTheme());
 
   React.useEffect(() => {
@@ -25,10 +26,11 @@ const ThemeToggle = () => {
   };
 
   return (
-    <button
+    <Button
       onClick={toggle}
-      className={`
-        p-2 rounded-lg border transition-all duration-300
+      size="sm"
+      variant="ghost"
+      className={` cursor-pointer px-1.5 rounded-lg border transition-all duration-300
         ${
           theme === 'dark'
             ? 'bg-gray-800 border-gray-700 text-yellow-400 hover:bg-gray-700'
@@ -37,7 +39,7 @@ const ThemeToggle = () => {
       `}
       title={`Alternar para modo ${theme === 'dark' ? 'claro' : 'escuro'}`}>
       {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-    </button>
+    </Button>
   );
 };
 export default ThemeToggle;
