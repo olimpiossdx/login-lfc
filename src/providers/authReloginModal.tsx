@@ -63,7 +63,7 @@ export const AuthReloginModal: React.FC<IAuthReloginModalProps> = ({ reason, onC
 
     return {
       title: 'Sessão Expirada',
-      desc: 'Seu token de acesso venceu. Faça login novamente.',
+      desc: 'Faça login novamente.',
       icon: Key,
       color: 'text-blue-600',
     };

@@ -191,11 +191,11 @@ const Modal: React.FC<IModalProps> = ({ options, onClose }) => {
         {/* Botão Fechar (X) */}
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           onClick={handleClose}
-          className="absolute right-1 top-1 rounded-full opacity-70 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700 z-50 h-2 w-2"
+          className="absolute right-1 top-1 h-5 px-0 rounded-full opacity-70 hover:opacity-100 z-50"
           title="Fechar">
-          <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <X size={20} className="text-gray-500 dark:text-gray-400" />
         </Button>
 
         {/* --- RENDERIZAÇÃO COMPATÍVEL COM SEU TYPES.TS --- */}
