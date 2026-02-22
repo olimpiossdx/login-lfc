@@ -14,6 +14,7 @@ import { Cadastro } from './features/home/pages/cadastro';
 // 1. Importar o nosso Provider de Inatividade
 import { IdleWatcherProvider } from './providers/idleWatcherProvider';
 import CadastroCliente from './features/home/pages/cadastro/cliente';
+import CadastroEmpreendimento from './features/home/pages/cadastro/empreendimento';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -61,11 +62,18 @@ const cadastroRoute = createProtectedRoute({
 
 const cadastroClienteRoute = createProtectedRoute({
   getParentRoute: () => authLayoutRoute,
-  path: '/cadastros/clientes',
+  path: '/cadastros/cliente',
   component: CadastroCliente,
 });
 
-const routeTree = rootRoute.addChildren([loginRoute, authLayoutRoute.addChildren([homeRoute, cadastroRoute, cadastroClienteRoute])]);
+const cadastroEmpreendimentoRoute = createProtectedRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: '/cadastros/empreendimento',
+  component: CadastroEmpreendimento,
+});
+
+const routeTree = rootRoute.addChildren([loginRoute, 
+  authLayoutRoute.addChildren([homeRoute, cadastroRoute, cadastroClienteRoute, cadastroEmpreendimentoRoute])]);
 
 export const router = createRouter({ routeTree });
 

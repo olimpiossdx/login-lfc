@@ -5,10 +5,10 @@ import Button from '../../../../../ui/button';
 import FormModal from './form.modal';
 import { Plus } from 'lucide-react';
 
-const CadastroCliente: React.FC = () => {
+const CadastroEmpreendimento: React.FC = () => {
   return (
     <>
-      <h1 className="text-xl font-semibold">Cadastro cliente</h1>
+      <h1 className="text-xl font-semibold">Cadastro empreendimento</h1>
       <Flex className="w-full" align="center" justify="end">
         <Button className="ml-2" variant="primary" onClick={FormModal} leftIcon={<Plus size={16} />}>
           Adicionar
@@ -25,4 +25,4 @@ const CadastroCliente: React.FC = () => {
     </>
   );
 };
-export default CadastroCliente;
+export default CadastroEmpreendimento;

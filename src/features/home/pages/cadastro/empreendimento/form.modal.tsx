@@ -12,7 +12,7 @@ const FormModal = (_: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       <>
         <ModalHeader>
           <ModalTitle className="flex items-center gap-2">
-            <User className="text-blue-600" /> Novo cliente
+            <User className="text-blue-600" /> Novo empreendimento
           </ModalTitle>
           <ModalDescription>Preencha as informações abaixo para cadastrar.</ModalDescription>
         </ModalHeader>
