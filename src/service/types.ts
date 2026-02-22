@@ -37,6 +37,7 @@ export interface IResponse<T = any> {
 // Objeto de retorno padronizado da nossa camada de serviço para a UI
 export interface IApiResponse<T> {
   data: T | null;
+  notificacoes: INotification[];
   error: ApiBusinessError | null;
   success: boolean;
 }

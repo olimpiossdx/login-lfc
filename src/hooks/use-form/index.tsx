@@ -589,7 +589,7 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
    * e, se estiver tudo certo, repassa os dados agrupados e o evento.
    */
   const handleSubmit = React.useCallback(
-    (onValid: (data: FV, event: React.FormEvent<HTMLFormElement>) => void) => (event: React.FormEvent<HTMLFormElement>) => {
+    (onValid: (data: FV, event:  React.SubmitEvent<HTMLFormElement>) => void) => (event:  React.SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = formRef.current;
       if (!form) {

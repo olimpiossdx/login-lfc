@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useRef } from 'react';
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+import HelperText from '../helper-text';
+import type { IHelperProps } from '../helper-text/propTypes';
+
+export interface IInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   name: string;
-  rightIcon?: React.ReactNode;
-  leftIcon?: React.ReactNode;
+  rightIcon?: ReactNode;
+  leftIcon?: ReactNode;
   containerClassName?: string;
+  // Propriedade para receber o helper text do Form
+  helperText?: IHelperProps;
   /**
    * - 'outlined': Borda completa (Padrão). Label corta a borda superior.
    * - 'filled': Fundo cinza, borda inferior apenas. Label fica interno no topo.
@@ -16,7 +21,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   floatingLabel?: boolean;
 }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+const Input = forwardRef<IInputProps, IInputProps>(
   (
     {
       label,
@@ -28,32 +33,40 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       onInvalid,
       onInput,
       variant = 'outlined',
-      size = 'md',
+      sized = 'md',
       floatingLabel = false,
       placeholder,
       ...props
     },
     ref,
   ) => {
-    const internalInputRef = React.useRef<HTMLInputElement>(null);
+    const internalInputRef = useRef<HTMLInputElement>(null);
     const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
 
-    const setRef = React.useCallback(
+    //TODO: ajusta conflito de ref entre forwardRef e uso interno
+    const useSetRef = useCallback(
       (element: HTMLInputElement | null) => {
         internalInputRef.current = element;
         if (typeof ref === 'function') {
-          ref(element);
+          ref(internalInputRef.current as unknown as IInputProps);
         } else if (ref) {
-          (ref as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          (ref.current as any) = element;
         }
       },
       [ref],
     );
 
+    const useHandleAttachHelper = useCallback((helper: IHelperProps) => {
+      const el = internalInputRef.current as IInputProps | null;
+      if (el) {
+        el.helperText = helper;
+      }
+    }, []);
+
     const isPasswordType = type === 'password';
     const isCheckOrRadio = type === 'checkbox' || type === 'radio';
 
-    const handleInvalid = ( e: React.SyntheticEvent<HTMLInputElement, Event>) => {
+    const handleInvalid = (e: React.InputEvent<HTMLInputElement>) => {
       e.currentTarget.setAttribute('data-invalid', 'true');
       e.currentTarget.classList.add('animate-shake');
       if (onInvalid) {
@@ -144,10 +157,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     let sizeClasses = '';
     if (variant === 'filled' && floatingLabel) {
       // Filled + Floating: Texto empurrado para baixo
-      sizeClasses = size === 'sm' ? 'pt-4 pb-0 text-xs h-8' : size === 'lg' ? 'pt-7 pb-2 text-lg h-16' : 'pt-6 pb-2 text-base h-14';
+      sizeClasses = sized === 'sm' ? 'pt-4 pb-0 text-xs h-8' : sized === 'lg' ? 'pt-7 pb-2 text-lg h-16' : 'pt-6 pb-2 text-base h-14';
     } else {
       // Padrão
-      sizeClasses = size === 'sm' ? 'py-1 text-xs h-8' : size === 'lg' ? 'py-3 text-lg h-12' : 'py-2.5 text-base h-11'; // Aumentei um pouco a altura padrão
+      sizeClasses = sized === 'sm' ? 'py-1 text-xs h-8' : sized === 'lg' ? 'py-3 text-lg h-12' : 'py-2.5 text-base h-11'; // Aumentei um pouco a altura padrão
     }
 
     // 3. Ícones
@@ -210,7 +223,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
 
           <input
-            ref={setRef}
+            ref={useSetRef}
             type={type}
             onInvalid={handleInvalid}
             onInput={handleInput}
@@ -291,6 +304,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
+        <HelperText attach={useHandleAttachHelper} />
       </div>
     );
   },

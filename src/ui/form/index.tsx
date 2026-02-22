@@ -8,13 +8,13 @@ import type { ValidationMode, ValidatorMap } from '../../hooks/use-form/props';
 import type { IApiResponse, INotification } from '../../service/types';
 import type { IInputProps } from '../input';
 
-export interface IFormProps<TValues> {
+export interface IFormProps<TValues> extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'>  {
   id?: string;
   initialValues?: TValues;
   validationRules?: ValidatorMap<TValues>;
   validationMode?: ValidationMode;
   // O onSubmit agora pode retornar a IApiResponse para o Form tratar os alertas internos
-  onSubmit?: (values: TValues, event: React.FormEvent<HTMLFormElement>) => void | Promise<void | IApiResponse<any>>;
+  onSubmit?: (values: TValues, event:  React.SubmitEvent<HTMLFormElement>) => void | Promise<void | IApiResponse<any>>;
   children: React.ReactNode;
 }
 
@@ -63,7 +63,7 @@ function Form<TValues extends Record<string, any> = Record<string, any>>(props: 
   let submitHandler: React.FormEventHandler<HTMLFormElement> | undefined = formProps.onSubmit;
 
   if (onSubmit) {
-    submitHandler = handleSubmit(async (values: TValues, event: React.FormEvent<HTMLFormElement>) => {
+    submitHandler = handleSubmit(async (values: TValues, event:  React.SubmitEvent<HTMLFormElement>) => {
       // Limpa qualquer alerta anterior antes de uma nova submissão
       servicesRef.current.alert?.hide();
 
@@ -82,7 +82,9 @@ function Form<TValues extends Record<string, any> = Record<string, any>>(props: 
 
             // (Bônus) Feedback de Campo: Se a API indicou o campo com erro, focamos nele
             if (errorNotif && errorNotif.campo) {
-              const fieldToFocus = event.currentTarget.querySelector(`[name="${errorNotif.campo}"]`) as HTMLElement;
+              const fieldToFocus = (event.target as unknown as HTMLFormElement).querySelector(
+                `[name="${errorNotif.campo}"]`,
+              ) as HTMLElement;
               if (fieldToFocus) {
                 fieldToFocus.focus();
               }

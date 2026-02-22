@@ -6,7 +6,7 @@ import type { ValidateFn } from '../../utils/validate';
 export interface UseFormConfig<FV> {
   id?: string;
   // Callback de submit que recebe os dados tipados e o evento original
-  onSubmit?: (data: FV, event: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit?: (data: FV, event: React.SubmitEvent<HTMLFormElement>) => void;
   validationRules?: ValidatorMap<FV>;
   validationMode?: ValidationMode;
 }
