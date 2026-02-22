@@ -12,7 +12,6 @@ const splitPath = (path: string) => path.replace(/\]/g, '').split(/[.\[]/);
  * Suporta: 'user.address.street' ou 'users[0].name'
  */
 export const setNestedValue = (obj: IAnyObject, path: string, value: any): void => {
-  // Ignora undefined (comum em radios não checados)
   if (value === undefined) {
     return;
   }
@@ -29,9 +28,7 @@ export const setNestedValue = (obj: IAnyObject, path: string, value: any): void 
       return;
     }
 
-    // Prepara próxima chave (cria objeto ou array se não existir)
     const nextKey = keys[i + 1];
-    // Se a próxima chave for numérica, criamos um array, senão um objeto
     const nextIsNumber = !isNaN(Number(nextKey));
 
     if (!current[key]) {
@@ -59,7 +56,6 @@ export const getNestedValue = (obj: IAnyObject, path: string): any => {
 
 /**
  * Seleciona campos do formulário baseado no prefixo
- * AJUSTE: Aceita HTMLElement genérico para funcionar com o MutationObserver
  */
 export const getFormFields = (root: HTMLElement, namePrefix?: string): FormField[] => {
   const selector = namePrefix
@@ -68,8 +64,6 @@ export const getFormFields = (root: HTMLElement, namePrefix?: string): FormField
 
   const nodeList = root.querySelectorAll(selector);
 
-  // Filtra botões que podem ter sido selecionados pelo seletor genérico input[name]
-  // e garante tipagem correta
   return Array.from(nodeList).filter((el): el is FormField => {
     return (
       (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) &&
@@ -90,19 +84,13 @@ export const getRelativePath = (fieldName: string, namePrefix?: string): string 
   }
   if (fieldName === namePrefix) {
     return null;
-  } // É o próprio campo raiz (objeto simples)
+  }
 
   if (fieldName.startsWith(namePrefix)) {
-    // Remove o prefixo
     let relative = fieldName.slice(namePrefix.length);
-
-    // Remove ponto inicial se houver (ex: prefixo "user", campo "user.name" -> ".name")
     if (relative.startsWith('.')) {
       relative = relative.slice(1);
     }
-    // Remove colchete inicial se houver (ex: prefixo "users", campo "users[0]" -> "[0]")
-    // Nota: Geralmente mantemos o colchete se for array, mas aqui ajustamos conforme necessidade.
-
     return relative;
   }
 
@@ -119,11 +107,19 @@ export const parseFieldValue = (field: FormField): any => {
     }
 
     if (field.type === 'checkbox') {
+      // AJUSTE: Verifica se o desenvolvedor atribuiu um valor explícito (diferente do 'on' padrão do HTML).
+      // Se tiver valor explícito, retorna o valor se checado, senão undefined.
+      // Se não tiver valor (ex: Aceito os termos), retorna booleano puro.
+      const hasExplicitValue = field.hasAttribute('value') && field.value !== 'on';
+
+      if (hasExplicitValue) {
+        return field.checked ? field.value : undefined;
+      }
+
       return field.checked;
     }
 
     if (field.type === 'radio') {
-      // AJUSTE: Radios só retornam valor se estiverem marcados
       return field.checked ? field.value : undefined;
     }
   }

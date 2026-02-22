@@ -1,8 +1,9 @@
-import React, { useCallback, useRef } from 'react';
+import React from 'react';
 
-import type { FieldListenerMap, FormField, Path, PathValue, UseFormConfig, ValidatorMap } from './props';
+import type { FieldListenerMap, FormField, Path, PathValue, UseFormConfig, ValidationMode, ValidatorMap } from './props';
 import { getFormFields, getNestedValue, getRelativePath, parseFieldValue, setNestedValue } from './utilities';
 import { initializeCheckboxMasters, setNativeChecked, setNativeValue, syncCheckboxGroup } from '../../utils/utilities';
+import type { ValidationResult, ValidationSeverity } from '../../utils/validate';
 
 /**
  * Hook principal para gerenciamento de formulários com arquitetura Híbrida.
@@ -11,30 +12,53 @@ import { initializeCheckboxMasters, setNativeChecked, setNativeValue, syncCheckb
  * - **Native Bypass:** Sincronia de edição programática.
  * - **Scoped Validation:** Validação parcial para Wizards/Tabs.
  * - **Callback Ref:** Gerenciamento robusto de ciclo de vida do DOM.
+ * * @param configOrId - Configuração do formulário ou apenas o ID em formato de string.
  */
 const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormConfig<FV>) => {
   // Normalização da Configuração
-  const config = typeof configOrId === 'string' ? { id: configOrId } : configOrId || {};
+  const config = typeof configOrId === 'string' ? ({ id: configOrId } as UseFormConfig<FV>) : configOrId || {};
   const formId = config.id || crypto.randomUUID();
   const onSubmitCallback = config.onSubmit;
 
   // --- REFS DE ESTADO (Persistem entre renders) ---
-  const fieldListeners = useRef<FieldListenerMap>(new Map());
-  const validators = useRef<ValidatorMap<FV>>({});
-  const debounceMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const isResetting = useRef(false);
-  const observerRef = useRef<MutationObserver | null>(null);
+
+  /**
+   * Ref para blindagem contra Stale Closures (Fechamentos Velhos).
+   * Guarda o modo de validação atualizado para que funções pesadas (envolvidas em useCallback)
+   * não precisem ser recriadas a cada render, mas sempre leiam a configuração mais recente.
+   */
+  const validationModeRef = React.useRef<ValidationMode>(config.validationMode ?? 'native');
+
+  // Sincroniza a Ref caso o componente pai mude a prop durante o ciclo de vida
+  React.useEffect(() => {
+    validationModeRef.current = config.validationMode ?? 'native';
+  }, [config.validationMode]);
+
+  const fieldListeners = React.useRef<FieldListenerMap>(new Map());
+  const validators = React.useRef<ValidatorMap<FV>>({});
+  const debounceMap = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const isResetting = React.useRef(false);
+  const observerRef = React.useRef<MutationObserver | null>(null);
 
   // Referência ativa do elemento <form> no DOM
-  const formRef = useRef<HTMLFormElement | null>(null);
+  const formRef = React.useRef<HTMLFormElement | null>(null);
 
   // --- GERENCIAMENTO DE LISTENERS ---
 
+  /**
+   * Limpa todos os event listeners, observers e timers pendentes.
+   * Previne memory leaks quando o formulário é desmontado ou recriado.
+   */
   const cleanupLogic = () => {
     if (observerRef.current) {
       observerRef.current.disconnect();
       observerRef.current = null;
     }
+
+    // Prevenção de Memory Leak: Limpa timers de debounce rodando em background
+    debounceMap.current.forEach((timer) => clearTimeout(timer));
+    debounceMap.current.clear();
+
     fieldListeners.current.forEach((listeners, field) => {
       field.removeEventListener('blur', listeners.blur);
       field.removeEventListener('input', listeners.change);
@@ -46,9 +70,10 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
   /**
    * **Callback Ref**: A chave da arquitetura.
    * O React chama esta função sempre que o nó DOM do form é montado ou desmontado.
-   * Isso garante que os listeners sejam reconectados mesmo se o form for recriado (key change).
+   * Garante que os listeners sejam reconectados caso o form sofra um re-render destrutivo.
+   * * @param node - O elemento HTMLFormElement nativo.
    */
-  const registerForm = useCallback((node: HTMLFormElement | null) => {
+  const registerForm = React.useCallback((node: HTMLFormElement | null) => {
     if (formRef.current) {
       cleanupLogic(); // Limpa o anterior
     }
@@ -64,13 +89,18 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     return form.querySelectorAll(`[name="${name}"]`).length;
   };
 
-  const setValidators = useCallback((newValidators: ValidatorMap<FV>) => {
+  const setValidators = React.useCallback((newValidators: ValidatorMap<FV>) => {
     validators.current = newValidators;
   }, []);
 
   // ============ LEITURA DE DADOS (DOM -> JSON) ============
 
-  const getValueImpl = useCallback((namePrefix?: string): any => {
+  /**
+   * Extrai os valores do formulário lendo diretamente do DOM.
+   * Suporta extração parcial baseada em prefixo de nome (ex: "address").
+   * Lida com checkboxes agrupados e isolados.
+   */
+  const getValueImpl = React.useCallback((namePrefix?: string): any => {
     const form = formRef.current;
     if (!form) {
       return namePrefix ? undefined : ({} as FV);
@@ -83,7 +113,6 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
       const exactMatch = fields.find((f) => f.name === namePrefix);
       if (exactMatch) {
         if (exactMatch instanceof HTMLInputElement && exactMatch.type === 'checkbox') {
-          // Se for checkbox único, retorna boolean. Se for grupo, retorna array.
           if (countFieldsByName(form, exactMatch.name) === 1) {
             const hasValue = exactMatch.hasAttribute('value') && exactMatch.value !== 'on';
             return exactMatch.checked ? (hasValue ? exactMatch.value : true) : false;
@@ -94,7 +123,7 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     }
 
     // Busca coletiva (Objeto completo)
-    const formData = {};
+    const formData: Record<string, any> = {};
     const processedNames = new Set<string>();
 
     fields.forEach((field) => {
@@ -106,13 +135,11 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
       if (field instanceof HTMLInputElement && field.type === 'checkbox') {
         const count = countFieldsByName(form, field.name);
         if (count > 1) {
-          // Grupo de Checkbox: Retorna Array de valores marcados
           const allChecked = form.querySelectorAll<HTMLInputElement>(`input[type="checkbox"][name="${field.name}"]:checked`);
           const values = Array.from(allChecked).map((cb) => cb.value);
           setNestedValue(formData, relativePath, values);
           processedNames.add(field.name);
         } else {
-          // Checkbox Único
           if (field.checked) {
             const hasExplicitValue = field.hasAttribute('value') && field.value !== 'on';
             setNestedValue(formData, relativePath, hasExplicitValue ? field.value : true);
@@ -122,53 +149,102 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
         }
         return;
       }
-      // Outros Inputs (Text, Radio, Select, FileHíbrido)
       setNestedValue(formData, relativePath, parseFieldValue(field));
     });
 
     return formData;
   }, []);
 
-  // Tipagem forte para o getValue
-  const getValue = getValueImpl as {
-    (): FV;
-    <P extends Path<FV>>(namePrefix: P): PathValue<FV, P>;
-    (namePrefix: string): any;
-  };
+  const getValue = getValueImpl as { (): FV; <P extends Path<FV>>(namePrefix: P): PathValue<FV, P>; (namePrefix: string): any };
 
   // ============ VALIDAÇÃO ============
 
-  const validateFieldInternal = (field: FormField, formValues: FV): string => {
-    const validateFn = validators.current[field.dataset.validation || ''];
+  type InternalValidationType = ValidationSeverity | '__none__';
 
-    // 1. Limpeza
-    field.setCustomValidity('');
+  interface InternalValidationResult {
+    message: string;
+    type: InternalValidationType;
+  }
 
-    // 2. Validação Nativa (HTML5)
-    // Se falhar aqui, paramos e usamos a mensagem do browser
-    if (!field.checkValidity()) {
-      return field.validationMessage;
+  /**
+   * Normaliza o resultado da validação customizada para um formato interno padrão.
+   */
+  const normalizeValidationResult = (result: ValidationResult): InternalValidationResult => {
+    if (!result) {
+      return { message: '', type: '__none__' };
     }
-
-    // 3. Validação Customizada (JS)
-    if (validateFn) {
-      const fieldValue = getNestedValue(formValues, field.name);
-      const result = validateFn(fieldValue, field, formValues);
-      if (result) {
-        const message = typeof result === 'string' ? result : result.message;
-        // Injeta o erro no browser
-        field.setCustomValidity(message);
-        return message;
-      }
+    if (typeof result === 'string') {
+      return { message: result, type: 'error' };
     }
-    return '';
+    return { message: result.message, type: result.type! };
   };
 
-  const updateErrorUI = (field: FormField, message: string) => {
+  /**
+   * Executa a validação de um campo em duas etapas:
+   * 1. Validação Nativa (HTML5) via checkValidity()
+   * 2. Validação Customizada via JS (se definida nos validators)
+   * * @param field - Campo DOM a ser validado.
+   * @param formValues - Valores atuais do formulário para validação cruzada.
+   * @returns O resultado interno contendo a mensagem e o tipo de erro.
+   */
+  const validateFieldInternal = (field: FormField, formValues: FV): InternalValidationResult => {
+    const validateFn = validators.current[field.dataset.validation || ''];
+    field.setCustomValidity('');
+
+    if (!field.checkValidity()) {
+      return { message: field.validationMessage || '', type: 'error' };
+    }
+
+    if (validateFn) {
+      const fieldValue = getNestedValue(formValues, field.name);
+      const rawResult = validateFn(fieldValue, field, formValues);
+      const normalized = normalizeValidationResult(rawResult);
+
+      if (normalized.message) {
+        field.setCustomValidity(normalized.message);
+        return normalized;
+      }
+    }
+    return { message: '', type: '__none__' };
+  };
+
+  /**
+   * Sincroniza o helper-text via ponteiro na ref do campo (se existir no componente React).
+   * Executado independentemente da existência de errorSlot no DOM.
+   */
+  const syncHelperForField = (field: FormField, result: InternalValidationResult, mode: ValidationMode) => {
+    const inputElement = field as any;
+    if (!inputElement.helperText) {
+      return;
+    }
+
+    if (mode === 'native') {
+      return;
+    }
+
+    if (mode === 'helper' || mode === 'both') {
+      const message = result.message;
+      if (message) {
+        const helperType = result.type === '__none__' ? undefined : result.type;
+        inputElement.helperText.set(message, helperType);
+      } else {
+        inputElement.helperText.set(null);
+      }
+    }
+  };
+
+  /**
+   * Atualiza a UI de erro nativa (slot/balão etc.) respeitando o validationMode.
+   * Adiciona também os atributos ARIA para acessibilidade.
+   */
+  const updateErrorUI = (field: FormField, result: InternalValidationResult, mode: ValidationMode) => {
+    const message = result.message;
+    const hasError = !!message;
     const errorId = `error-${field.name}`;
     const errorSlot = document.getElementById(errorId);
 
-    if (message) {
+    // PARTE 1: ARIA
+    if (hasError) {
       field.setAttribute('aria-invalid', 'true');
       if (errorSlot) {
         field.setAttribute('aria-describedby', errorId);
@@ -178,34 +254,55 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
       field.removeAttribute('aria-describedby');
     }
 
+    // PARTE 2: SLOT NATIVO
     if (errorSlot) {
-      errorSlot.textContent = message;
-      errorSlot.setAttribute('data-visible', message ? 'true' : 'false');
-      errorSlot.style.display = message ? 'block' : 'none';
+      if (mode === 'helper') {
+        errorSlot.textContent = '';
+        errorSlot.setAttribute('data-visible', 'false');
+        errorSlot.style.display = 'none';
+      } else {
+        errorSlot.textContent = message;
+        errorSlot.setAttribute('data-visible', hasError ? 'true' : 'false');
+        errorSlot.style.display = hasError ? 'block' : 'none';
+      }
     }
+
+    // PARTE 3: HELPER
+    syncHelperForField(field, result, mode);
   };
 
-  const revalidateAllCustomRules = useCallback(() => {
+  // ============ VALIDAÇÃO GLOBAL ============
+
+  /**
+   * Revalida todos os campos do formulário ignorando os desabilitados.
+   * Utiliza a Ref de ValidationMode para estar sempre sincronizado.
+   */
+  const revalidateAllCustomRules = React.useCallback(() => {
     const form = formRef.current;
     if (!form) {
       return;
     }
+
     const formValues = getValue() as FV;
     const allFields = getFormFields(form);
+    const mode = validationModeRef.current;
+
     allFields.forEach((field) => {
       if (field.disabled) {
         return;
       }
-      const msg = validateFieldInternal(field, formValues);
-      updateErrorUI(field, msg);
+      const result = validateFieldInternal(field, formValues);
+      updateErrorUI(field, result, mode);
     });
   }, [getValue]);
 
   /**
    * Valida apenas um subconjunto de campos dentro de um container específico.
    * Essencial para Wizards e Abas onde apenas o passo atual deve ser validado.
+   * * @param container - Elemento HTML que envolve os campos a serem validados.
+   * @returns boolean indicando se o escopo inteiro é válido.
    */
-  const validateScope = useCallback(
+  const validateScope = React.useCallback(
     (container: HTMLElement) => {
       const form = formRef.current;
       if (!form || !container) {
@@ -214,6 +311,8 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
       const formValues = getValue() as FV;
       const fieldsInScope = getFormFields(container);
+      const mode = validationModeRef.current;
+
       let isValid = true;
       let firstInvalid: HTMLElement | null = null;
 
@@ -223,10 +322,10 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
           return;
         }
 
-        const msg = validateFieldInternal(field, formValues);
-        updateErrorUI(field, msg);
+        const result = validateFieldInternal(field, formValues);
+        updateErrorUI(field, result, mode);
 
-        if (msg || !field.checkValidity()) {
+        if (result.message || !field.checkValidity()) {
           isValid = false;
           if (!firstInvalid) {
             firstInvalid = field;
@@ -236,8 +335,8 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
       if (!isValid && firstInvalid) {
         // @ts-ignore
-        if (firstInvalid.reportValidity) {
-          firstInvalid.reportValidity();
+        if (firstInvalid.reportValidity && validationMode !== 'helper') {
+          (firstInvalid as FormField).reportValidity();
         }
         // @ts-ignore
         firstInvalid.focus();
@@ -250,17 +349,21 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
   // ============ INTERAÇÃO (LISTENERS) ============
 
-  const handleFieldInteraction = useCallback(
+  /**
+   * Trata os eventos de Input, Change e Blur dos campos.
+   * Orquestra a sincronia do Debounce e a chamada de atualização da UI de validação.
+   */
+  const handleFieldInteraction = React.useCallback(
     (event: Event) => {
       if (isResetting.current) {
         return;
       }
+
       const target = event.currentTarget;
       if (!(target instanceof HTMLElement)) {
         return;
       }
 
-      // Sincronia de Checkbox Group
       if (event.type === 'change' && target instanceof HTMLInputElement && target.type === 'checkbox') {
         if (formRef.current) {
           syncCheckboxGroup(target, formRef.current);
@@ -274,36 +377,43 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
       field.classList.add('is-touched');
       const formValues = getValue() as FV;
+      const mode = validationModeRef.current;
 
       if (debounceMap.current.has(field.name)) {
         clearTimeout(debounceMap.current.get(field.name));
         debounceMap.current.delete(field.name);
       }
 
-      // Blur: Valida imediatamente
       if (event.type === 'blur') {
-        const msg = validateFieldInternal(field, formValues);
-        updateErrorUI(field, msg);
+        const result = validateFieldInternal(field, formValues);
+        updateErrorUI(field, result, mode);
         return;
       }
 
-      // Input/Change: Valida com Debounce (600ms)
       if (event.type === 'input' || event.type === 'change') {
         const wasInvalid = field.hasAttribute('aria-invalid') || !field.validity.valid;
         if (!wasInvalid) {
           return;
         }
 
-        const msg = validateFieldInternal(field, formValues);
+        const result = validateFieldInternal(field, formValues);
+        const msg = result.message;
+
         if (!msg) {
-          updateErrorUI(field, ''); // Limpa erro na hora se corrigiu
+          updateErrorUI(field, { message: '', type: '__none__' }, mode);
         } else {
+          const interval = mode !== 'helper' ? 600 : 0;
           const timer = setTimeout(() => {
-            updateErrorUI(field, msg);
+            updateErrorUI(field, result, mode);
+
             if (document.activeElement === field) {
-              field.reportValidity();
+              // @ts-ignore
+              if (field.reportValidity && mode !== 'helper') {
+                // @ts-ignore
+                field.reportValidity();
+              }
             }
-          }, 600);
+          }, interval);
           debounceMap.current.set(field.name, timer);
         }
       }
@@ -313,25 +423,29 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
   // ============ RESET / LOAD DATA ============
 
-  const resetSection = useCallback((namePrefix: string, originalValues: any) => {
+  /**
+   * Reseta o formulário ou uma seção específica (útil para edição de dados existentes).
+   * * @param namePrefix - Prefixo do caminho (path) para focar em dados específicos, ou vazio para tudo.
+   * @param originalValues - Dados para preencher o formulário (ex: objeto do banco de dados).
+   */
+  const resetSection = React.useCallback((namePrefix: string, originalValues: any) => {
     const form = formRef.current;
     if (!form) {
       return;
     }
 
-    isResetting.current = true; // Bloqueia listeners durante o reset
+    isResetting.current = true;
     try {
       const fields = getFormFields(form, namePrefix);
+      const mode = validationModeRef.current;
 
       fields.forEach((field) => {
-        // Limpa timers pendentes
         if (debounceMap.current.has(field.name)) {
           clearTimeout(debounceMap.current.get(field.name));
           debounceMap.current.delete(field.name);
         }
-        updateErrorUI(field, '');
+        updateErrorUI(field, { message: '', type: '__none__' }, mode);
 
-        // Descobre o valor no objeto de dados
         const relativePath = getRelativePath(field.name, namePrefix);
         let valueToApply = undefined;
         if (originalValues) {
@@ -341,7 +455,6 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
           }
         }
 
-        // Aplica valor usando setters nativos (Bypass)
         if (field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'radio')) {
           let shouldCheck = false;
           if (valueToApply !== undefined) {
@@ -383,18 +496,11 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     }
 
     if (((field as any).name || isMaster) && !fieldListeners.current.has(field)) {
-      const listeners = {
-        blur: handleFieldInteraction,
-        change: handleFieldInteraction,
-      };
+      const listeners = { blur: handleFieldInteraction, change: handleFieldInteraction };
       field.addEventListener('blur', listeners.blur);
 
-      // Input para texto, Change para outros
-      const inputEvent =
-        field instanceof HTMLInputElement &&
-        (field.type === 'text' || field.type === 'email' || field.type === 'password' || field.type === 'search')
-          ? 'input'
-          : 'change';
+      const types = ['text', 'email', 'password', 'search'];
+      const inputEvent = field instanceof HTMLInputElement && types.includes(field.type) ? 'input' : 'change';
 
       if (inputEvent === 'input') {
         field.addEventListener('input', listeners.change);
@@ -415,11 +521,14 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     }
   };
 
+  /**
+   * Configura o MutationObserver para vigiar nós DOM injetados ou removidos.
+   * É o coração do 'Uncontrolled' acoplado à dinamicidade do React.
+   */
   const setupDOMMutationObserver = (form: HTMLFormElement): void => {
     const initialFields = getFormFields(form);
     initialFields.forEach(addFieldInteractionListeners);
 
-    // Inicializa mestres
     form.querySelectorAll('input[type="checkbox"][data-checkbox-master]').forEach((cb) => {
       if (cb instanceof HTMLElement) {
         addFieldInteractionListeners(cb);
@@ -461,18 +570,25 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
 
   const focusFirstInvalidField = (form: HTMLFormElement): void => {
     const invalid = form.querySelector<HTMLElement>(':invalid');
-    if (!invalid) {
+    if (!invalid || invalid === null) {
       return;
     }
 
-    // Tenta focar elementos visuais se o input for hidden (Shadow Inputs)
     const focusable = invalid.parentElement?.querySelector<HTMLElement>('input:not([type="hidden"]), select, textarea, [tabindex="0"]');
-    focusable ? focusable.focus() : invalid.focus();
+    if (focusable && focusable instanceof HTMLElement) {
+      focusable.focus();
+    } else {
+      invalid.focus();
+    }
   };
 
   // ============ SUBMIT ============
 
-  const handleSubmit = useCallback(
+  /**
+   * Intercepta o Submit nativo, revalida tudo de forma imperativa
+   * e, se estiver tudo certo, repassa os dados agrupados e o evento.
+   */
+  const handleSubmit = React.useCallback(
     (onValid: (data: FV, event: React.FormEvent<HTMLFormElement>) => void) => (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = formRef.current;
@@ -490,12 +606,14 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
           return;
         }
         const isValid = formRef.current.checkValidity();
+        const mode = validationModeRef.current;
 
         if (!isValid) {
           focusFirstInvalidField(form);
-          form.reportValidity();
+          if (mode !== 'helper') {
+            form.reportValidity();
+          }
         } else {
-          // Sucesso! Passa dados e evento
           onValid(getValue() as FV, event);
         }
       }, 0);
@@ -503,10 +621,8 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     [getValue, revalidateAllCustomRules],
   );
 
-  // Prepara o handler se foi passado na config
   const submitHandler = onSubmitCallback ? handleSubmit(onSubmitCallback) : undefined;
 
-  // Objeto de Props pronto para uso (DX)
   const formProps = {
     id: formId,
     ref: registerForm,
@@ -522,7 +638,7 @@ const useForm = <FV extends Record<string, any>>(configOrId?: string | UseFormCo
     getValue,
     registerForm,
     formProps,
-    validateScope, // API Pública para Wizards
+    validateScope,
   };
 };
 
