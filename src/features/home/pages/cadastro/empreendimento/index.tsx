@@ -9,13 +9,13 @@ const CadastroEmpreendimento: React.FC = () => {
   return (
     <>
       <h1 className="text-xl font-semibold">Cadastro empreendimento</h1>
-      <Flex className="w-full" align="center" justify="end">
+      <Flex className="w-full" alignItems="center" justifyContent="end">
         <Button className="ml-2" variant="primary" onClick={FormModal} leftIcon={<Plus size={16} />}>
           Adicionar
         </Button>
       </Flex>
       <form>
-      <Flex align="end">
+      <Flex alignItems="end">
         <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
         <Button type='submit' className="ml-2" variant="primary">
           Pesquise

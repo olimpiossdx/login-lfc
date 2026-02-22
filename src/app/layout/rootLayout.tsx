@@ -20,8 +20,8 @@ export function DropDownUserMenu() {
     <DropdownMenu>
       <DropdownTrigger>
         <Flex
-          align="center"
-          justify="center"
+          alignItems="center"
+          justifyContent="center"
           className="h-8 w-8 cursor-pointer rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
           JS
         </Flex>
@@ -143,17 +143,17 @@ export const RootLayout: React.FC<React.PropsWithChildren<IRootLayoutProps>> = (
         {/* Navbar */}
         <Flex
           as="header"
-          align="center"
-          justify="between"
+          alignItems="center"
+          justifyContent="between"
           className="h-14 flex px-4 sm:px-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
-          <Flex align="center" gap={4}>
+          <Flex alignItems="center" gap={4}>
             <button onClick={toggleSidebar} className="lg:hidden text-gray-500 hover:text-gray-700">
               <Menu size={24} />
             </button>
             <h1 className="text-lg font-semibold text-gray-800 dark:text-white hidden sm:block">Dashboard</h1>
           </Flex>
 
-          <Flex align="center" className="gap-4">
+          <Flex alignItems="center" className="gap-4">
             <ThemeToggle />
             <DropDownUserMenu />
           </Flex>

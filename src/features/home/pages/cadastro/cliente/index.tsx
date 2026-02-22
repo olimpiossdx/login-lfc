@@ -5,23 +5,24 @@ import Button from '../../../../../ui/button';
 import FormModal from './form.modal';
 import { Plus } from 'lucide-react';
 import Form from '../../../../../ui/form';
+import Heading from '../../../../../ui/typography/heading';
 
 const CadastroCliente: React.FC = () => {
   return (
     <>
-      <h1 className="text-xl font-semibold">Cadastro cliente</h1>
-      <Flex className="w-full" align="center" justify="end">
+      <Heading level={1} className="text-xl font-semibold">Cadastro cliente</Heading>
+      <Flex className="w-full" alignItems="center" justifyContent="end">
         <Button className="ml-2" variant="primary" onClick={FormModal} leftIcon={<Plus size={16} />}>
           Adicionar
         </Button>
       </Flex>
-      <Form onSubmit={(data) => console.log(data)}  className="w-full gap-1">
-      <Flex align="end">
-        <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
-        <Button type='submit' className="ml-2" variant="primary">
-          Pesquise
-        </Button>
-      </Flex>
+      <Form onSubmit={(data) => console.log(data)} className="w-full gap-1">
+        <Flex alignItems="end">
+          <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
+          <Button type="submit" className="ml-2" variant="primary">
+            Pesquise
+          </Button>
+        </Flex>
       </Form>
     </>
   );

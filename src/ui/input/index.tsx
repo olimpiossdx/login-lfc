@@ -1,4 +1,4 @@
-import React, { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useRef } from 'react';
+import React, { type InputHTMLAttributes } from 'react';
 
 import HelperText from '../helper-text';
 import type { IHelperProps } from '../helper-text/propTypes';
@@ -6,8 +6,8 @@ import type { IHelperProps } from '../helper-text/propTypes';
 export interface IInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   name: string;
-  rightIcon?: ReactNode;
-  leftIcon?: ReactNode;
+  rightIcon?: React.ReactNode;
+  leftIcon?: React.ReactNode;
   containerClassName?: string;
   // Propriedade para receber o helper text do Form
   helperText?: IHelperProps;
@@ -21,7 +21,7 @@ export interface IInputProps extends InputHTMLAttributes<HTMLInputElement> {
   floatingLabel?: boolean;
 }
 
-const Input = forwardRef<IInputProps, IInputProps>(
+const Input = React.forwardRef<IInputProps, IInputProps>(
   (
     {
       label,
@@ -40,11 +40,11 @@ const Input = forwardRef<IInputProps, IInputProps>(
     },
     ref,
   ) => {
-    const internalInputRef = useRef<HTMLInputElement>(null);
+    const internalInputRef = React.useRef<HTMLInputElement>(null);
     const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
 
     //TODO: ajusta conflito de ref entre forwardRef e uso interno
-    const useSetRef = useCallback(
+    const useSetRef = React.useCallback(
       (element: HTMLInputElement | null) => {
         internalInputRef.current = element;
         if (typeof ref === 'function') {
@@ -56,10 +56,10 @@ const Input = forwardRef<IInputProps, IInputProps>(
       [ref],
     );
 
-    const useHandleAttachHelper = useCallback((helper: IHelperProps) => {
-      const el = internalInputRef.current as IInputProps | null;
-      if (el) {
-        el.helperText = helper;
+    const useHandleAttachHelper = React.useCallback((helper: IHelperProps) => {
+      const input = internalInputRef.current as IInputProps | null;
+      if (input) {
+        input.helperText = helper;
       }
     }, []);
 
@@ -180,29 +180,11 @@ const Input = forwardRef<IInputProps, IInputProps>(
       // Checkbox: rounded (Quadrado arredondado)
       // Tamanho: w-5 h-5 (Igual ao exemplo anterior)
       const shapeClass = type === 'radio' ? 'rounded-full' : 'rounded';
-
-      finalInputClasses = `
-        w-5 h-5 
-        text-blue-600 
-        border-gray-300 
-        ${shapeClass}
-        focus:ring-blue-500 
-        cursor-pointer 
-        accent-blue-600
-      `;
+      finalInputClasses = `w-5 h-5 text-blue-600 border-gray-300 ${shapeClass} focus:ring-blue-500 cursor-pointer accent-blue-600`;
     } else {
-      finalInputClasses = `
-        ${commonClasses}
-        ${variantClasses}
-        ${sizeClasses}
-        ${iconPadding}
-        ${floatingLabel ? 'placeholder-transparent' : ''}
-        
-        data-[invalid=true]:border-red-500 
-        data-[invalid=true]:text-red-900 
-        data-[invalid=true]:focus:border-red-500 
-        data-[invalid=true]:focus:ring-red-500
-        data-[invalid=true]:placeholder:text-red-300
+      finalInputClasses = ` ${commonClasses} ${variantClasses} ${sizeClasses} ${iconPadding} ${floatingLabel ? 'placeholder-transparent' : ''}
+        data-[invalid=true]:border-red-500 data-[invalid=true]:text-red-900 data-[invalid=true]:focus:border-red-500 
+        data-[invalid=true]:focus:ring-red-500 data-[invalid=true]:placeholder:text-red-300
       `;
     }
 
@@ -228,7 +210,7 @@ const Input = forwardRef<IInputProps, IInputProps>(
             onInvalid={handleInvalid}
             onInput={handleInput}
             onAnimationEnd={handleAnimationEnd}
-            className={`peer ${finalInputClasses} ${className || ''}`}
+            className={`peer ${finalInputClasses} ${className || ''} px-1`}
             placeholder={floatingLabel && !placeholder ? ' ' : placeholder}
             {...props}
           />
