@@ -1,13 +1,56 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, Users, Package, Settings, BarChart2, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, Home, Users, Package, Settings, BarChart2, LogOut, ChevronDown, Bell, User } from 'lucide-react';
 import { Link, Outlet } from '@tanstack/react-router';
 import ThemeToggle from '../../theme';
 import Button from '../../ui/button';
 import { authService } from '../../core/auth/auth-service';
 import Flex from '../../ui/flex';
+import { DropdownContent, DropdownHeader, DropdownItem, DropdownMenu, DropdownTrigger } from '../../ui/dropdown-menu';
 
 export interface IRootLayoutProps {
   children?: React.ReactNode;
+}
+
+export function DropDownUserMenu() {
+  async function handleLogoutAsync() {
+    await authService.logout();
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownTrigger>
+        <Flex
+          align="center"
+          justify="center"
+          className="h-8 w-8 cursor-pointer rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
+          JS
+        </Flex>
+      </DropdownTrigger>
+
+      <DropdownContent width="w-72">
+        <DropdownHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-slate-900 dark:text-slate-50">Usuário Demo</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">usuario@dominio.com</span>
+            </div>
+          </div>
+        </DropdownHeader>
+
+        <DropdownItem as="a" href="#perfil" icon={User}>
+          Meu perfil
+        </DropdownItem>
+
+        <DropdownItem as="a" href="#notificacoes" icon={Bell}>
+          Notificações
+        </DropdownItem>
+
+        <DropdownItem as="button" variant="destructive" icon={LogOut} onClick={handleLogoutAsync}>
+          Sair
+        </DropdownItem>
+      </DropdownContent>
+    </DropdownMenu>
+  );
 }
 
 export const RootLayout: React.FC<React.PropsWithChildren<IRootLayoutProps>> = ({ children }) => {
@@ -69,9 +112,9 @@ export const RootLayout: React.FC<React.PropsWithChildren<IRootLayoutProps>> = (
 
             {openSubmenu === 'cadastros' && (
               <div className="pl-10 space-y-1 animate-in slide-in-from-top-1 duration-200">
-                <NavItem to="/cadastros/clientes" label="Clientes" size="sm" />
-                <NavItem to="/cadastros/produtos" label="Produtos" size="sm" />
-                <NavItem to="/cadastros/fornecedores" label="Fornecedores" size="sm" />
+                <NavItem to="/cadastros/cliente" label="Cliente" size="sm" />
+                <NavItem to="/cadastros/empreendimento" label="Empreendimento" size="sm" />
+                <NavItem to="/cadastros/fornecedor" label="Fornecedor" size="sm" />
               </div>
             )}
           </div>
@@ -112,12 +155,7 @@ export const RootLayout: React.FC<React.PropsWithChildren<IRootLayoutProps>> = (
 
           <Flex align="center" className="gap-4">
             <ThemeToggle />
-            <Flex
-              align="center"
-              justify="center"
-              className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
-              JS
-            </Flex>
+            <DropDownUserMenu />
           </Flex>
         </Flex>
 
