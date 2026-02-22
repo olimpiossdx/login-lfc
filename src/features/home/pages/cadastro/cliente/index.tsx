@@ -4,6 +4,7 @@ import Input from '../../../../../ui/input';
 import Button from '../../../../../ui/button';
 import FormModal from './form.modal';
 import { Plus } from 'lucide-react';
+import Form from '../../../../../ui/form';
 
 const CadastroCliente: React.FC = () => {
   return (
@@ -14,14 +15,14 @@ const CadastroCliente: React.FC = () => {
           Adicionar
         </Button>
       </Flex>
-      <form>
+      <Form onSubmit={(data) => console.log(data)}  className="w-full gap-1">
       <Flex align="end">
         <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
         <Button type='submit' className="ml-2" variant="primary">
           Pesquise
         </Button>
       </Flex>
-      </form>
+      </Form>
     </>
   );
 };
