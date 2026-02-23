@@ -1,13 +1,9 @@
 // ----------------------------------------------------------------------
 // UTILITÁRIO CUSTOMIZADO: cn (ClassNames)
-// Substitui a necessidade de 'clsx' e 'tailwind-merge'
 // ----------------------------------------------------------------------
 
 type ClassValue = string | number | boolean | undefined | null | ClassValue[] | { [key: string]: any };
 
-/**
- * Função auxiliar para processar argumentos de classe recursivamente (estilo clsx)
- */
 function toVal(mix: ClassValue): string {
   let k,
     y,
@@ -40,11 +36,6 @@ function toVal(mix: ClassValue): string {
   return str;
 }
 
-/**
- * Resolve conflitos básicos de Tailwind.
- * Ex: Se tiver 'p-4' e depois 'p-2', mantém apenas o último ('p-2').
- * Nota: Esta é uma heurística simplificada. O tailwind-merge real é muito mais complexo.
- */
 function mergeTailwindClasses(className: string): string {
   if (!className) {
     return '';
@@ -54,7 +45,7 @@ function mergeTailwindClasses(className: string): string {
   const classMap: Record<string, string> = {};
   const finalClasses: string[] = [];
 
-  // Lista de prefixos conflitantes comuns que queremos resolver (o último ganha)
+  // CORREÇÃO CIRÚRGICA: Removido o 'flex-' genérico e adicionados os grupos reais de conflito do flexbox
   const conflictPrefixes = [
     'p-',
     'pt-',
@@ -62,57 +53,53 @@ function mergeTailwindClasses(className: string): string {
     'pl-',
     'pr-',
     'px-',
-    'py-', // Padding
+    'py-',
     'm-',
     'mt-',
     'mb-',
     'ml-',
     'mr-',
     'mx-',
-    'my-', // Margin
+    'my-',
     'text-',
     'bg-',
     'border-',
-    'rounded-', // Cores e Bordas
+    'rounded-',
     'w-',
     'h-',
     'min-w-',
-    'max-w-', // Tamanhos
-    'flex-',
+    'max-w-',
     'grid-',
     'justify-',
-    'items-', // Layout
+    'items-',
     'top-',
     'bottom-',
     'left-',
     'right-',
-    'inset-', // Posição
+    'inset-',
+    // Novos prefixos Flex isolados por categoria:
+    'flex-row',
+    'flex-col', // Direção conflita com direção
+    'flex-wrap',
+    'flex-nowrap', // Wrap conflita com wrap
   ];
 
   classes.forEach((cls) => {
-    // Verifica se a classe começa com algum prefixo conhecido
+    // Procura se a classe começa com um dos prefixos restritos
     const prefix = conflictPrefixes.find((p) => cls.startsWith(p));
 
     if (prefix) {
-      // Se encontrou conflito, substitui no mapa (o último loop vence)
       classMap[prefix] = cls;
     } else {
-      // Classes sem conflito mapeado (ex: 'relative', 'block') são mantidas
-      // Adicionamos diretamente ao array final ou usamos um identificador único
+      // Classes como 'flex-1', 'flex-auto', 'flex' (puro) passam direto sem se aniquilarem
       finalClasses.push(cls);
     }
   });
 
-  // Reconstrói a string com as classes resolvidas + classes sem conflito
   return [...finalClasses, ...Object.values(classMap)].join(' ');
 }
 
-/**
- * Função principal exportada 'cn'
- * Combina classes e tenta limpar conflitos básicos.
- */
 export function cn(...inputs: ClassValue[]) {
-  // 1. Concatena tudo (comportamento clsx)
   let concatenated = '';
   for (let i = 0; i < inputs.length; i++) {
     const x = toVal(inputs[i]);
@@ -123,7 +110,5 @@ export function cn(...inputs: ClassValue[]) {
     }
   }
 
-  // 2. (Opcional) Aplica o merge customizado se desejar resolver conflitos
-  // Se preferir apenas concatenação pura, retorne 'concatenated'
   return mergeTailwindClasses(concatenated);
 }
