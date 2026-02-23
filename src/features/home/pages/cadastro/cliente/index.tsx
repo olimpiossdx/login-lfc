@@ -8,15 +8,23 @@ import Form from '../../../../../ui/form';
 import Heading from '../../../../../ui/typography/heading';
 
 const CadastroCliente: React.FC = () => {
+  const [loading, setLoading] = React.useTransition();
+
+  const handleSubmitSearchAsync = async (data: { pesquisar: string }) => {
+    console.log(data);
+  };
+
   return (
     <>
-      <Heading level={1} className="text-xl font-semibold">Cadastro cliente</Heading>
+      <Heading level={1} className="text-xl font-semibold">
+        Cadastro cliente
+      </Heading>
       <Flex className="w-full" alignItems="center" justifyContent="end">
         <Button className="ml-2" variant="primary" onClick={FormModal} leftIcon={<Plus size={16} />}>
           Adicionar
         </Button>
       </Flex>
-      <Form onSubmit={(data) => console.log(data)} className="w-full gap-1">
+      <Form onSubmit={handleSubmitSearchAsync} className="w-full gap-1">
         <Flex alignItems="end">
           <Input label="Pesquise" name="pesquisar" placeholder="Pesquise por nome, cpf ou cpnj" />
           <Button type="submit" className="ml-2" variant="primary">
