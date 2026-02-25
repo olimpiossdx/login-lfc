@@ -60,7 +60,7 @@ function Form<TValues extends Record<string, any> = Record<string, any>>(props: 
   }, [initialValues, resetSection]);
 
   // 3. INTEGRAÇÃO INTELIGENTE DE FEEDBACK (Sem Toasts Hardcoded)
-  let submitHandler: React.FormEventHandler<HTMLFormElement> | undefined = formProps.onSubmit;
+  let submitHandler: React.SubmitEventHandler<HTMLFormElement> | undefined = formProps.onSubmit;
 
   if (onSubmit) {
     submitHandler = handleSubmit(async (values: TValues, event: React.SubmitEvent<HTMLFormElement>) => {

@@ -6,7 +6,6 @@ import FormModal from './form.modal';
 import { Plus } from 'lucide-react';
 import Form from '../../../../../ui/form';
 import Heading from '../../../../../ui/typography/heading';
-import { Spinner } from '../../../../../ui/spinner';
 
 const CadastroCliente: React.FC = () => {
   const [loading, setLoading] = React.useTransition();
