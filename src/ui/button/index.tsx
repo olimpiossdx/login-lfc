@@ -4,15 +4,18 @@ import type { IButtonElement, IButtonProps } from './propTypes';
 import { cn } from '../../utils/cn';
 import { Spinner } from '../spinner';
 
+// 👇 O Tipo Literal que garante a Máquina de Estados
+type ButtonState = 'ocioso' | 'loading' | 'disabled';
+
 const Button = React.forwardRef<IButtonElement, IButtonProps>(
   (
     {
       children,
       className,
-      variant = 'primary', // O default volta a ser o clássico limpo
+      variant = 'primary',
       size = 'md',
       isLoading: propLoading,
-      disabled,
+      disabled: propDisabled,
       leftIcon,
       rightIcon,
       fullWidth = false,
@@ -22,9 +25,29 @@ const Button = React.forwardRef<IButtonElement, IButtonProps>(
     ref,
   ) => {
     const internalRef = React.useRef<HTMLButtonElement>(null);
-    const [internalLoading, setInternalLoading] = React.useState(false);
-    const isEffectiveLoading = propLoading !== undefined ? propLoading : internalLoading;
 
+    // 👇 1. Estado Único Interno
+    const [internalState, setInternalState] = React.useState<ButtonState>('ocioso');
+
+    // 👇 2. Motor de Precedência (Props declarativas > Estado imperativo)
+    const effectiveState = React.useMemo<ButtonState>(() => {
+      // Prioridade Absoluta: Block/Disabled
+      if (propDisabled || internalState === 'disabled') {
+        return 'disabled';
+      }
+      // Prioridade Secundária: Loading
+      if (propLoading || internalState === 'loading') {
+        return 'loading';
+      }
+      // Fallback: Livre
+      return 'ocioso';
+    }, [propDisabled, propLoading, internalState]);
+
+    // 👇 3. Tradução para a UI nativa
+    const showLoading = effectiveState === 'loading';
+    const isActuallyDisabled = effectiveState === 'disabled' || effectiveState === 'loading';
+
+    // 👇 4. Exposição Imperativa via Ref
     React.useImperativeHandle(ref, () => {
       const element = internalRef.current;
       if (!element) {
@@ -32,30 +55,39 @@ const Button = React.forwardRef<IButtonElement, IButtonProps>(
       }
 
       const augmentedElement = element as IButtonElement;
-      augmentedElement.setLoading = (val: boolean) => setInternalLoading(val);
 
+      // As funções de set agora fazem transição de estado da FSM
+      augmentedElement.setLoading = (val: boolean) => setInternalState(val ? 'loading' : 'ocioso');
+      augmentedElement.setDisabled = (val: boolean) => setInternalState(val ? 'disabled' : 'ocioso');
+
+      // Getters refletem a realidade processada da interface
       Object.defineProperty(augmentedElement, 'loading', {
-        get: () => isEffectiveLoading,
+        get: () => showLoading,
+        configurable: true,
+      });
+
+      Object.defineProperty(augmentedElement, 'disabled', {
+        get: () => isActuallyDisabled,
         configurable: true,
       });
 
       return augmentedElement;
-    }, [isEffectiveLoading]);
+    }, [showLoading, isActuallyDisabled]);
 
+    // 👇 Ajuste Visual: Transparência dinâmica baseada no estado real
     const baseStyles = cn(
       'inline-flex items-center justify-center rounded-lg font-medium gap-2',
       'transition-all duration-300 ease-in-out',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
       'focus-visible:ring-cyan-500/50 dark:ring-offset-gray-900',
-      'disabled:pointer-events-none disabled:opacity-50 select-none',
+      'disabled:pointer-events-none select-none',
+      effectiveState === 'disabled' ? 'disabled:opacity-50' : 'disabled:opacity-80',
     );
 
     const variants = {
       primary: 'bg-blue-600 !text-white hover:bg-blue-700 shadow-sm border border-transparent dark:bg-blue-600 dark:hover:bg-blue-700',
-
       'primary-soft':
         'bg-blue-50 !text-blue-700 hover:bg-blue-100 hover:!text-blue-800 shadow-sm border border-blue-100 dark:bg-blue-500/15 dark:!text-blue-300 dark:border-blue-500/20 dark:hover:bg-blue-500/25 dark:hover:!text-blue-200',
-
       secondary:
         'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-800 border border-transparent dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white',
       outline:
@@ -72,17 +104,11 @@ const Button = React.forwardRef<IButtonElement, IButtonProps>(
       icon: 'h-10 w-10',
     };
 
-    const finalClassName = cn(
-      baseStyles,
-      variants[variant], // Uso direto e limpo da variante após ajuste do TypeScript
-      sizes[size],
-      fullWidth ? 'w-full' : '',
-      className,
-    );
+    const finalClassName = cn(baseStyles, variants[variant], sizes[size], fullWidth ? 'w-full' : '', className);
 
     return (
-      <button ref={internalRef} type={type} className={finalClassName} disabled={isEffectiveLoading || disabled} {...props}>
-        {isEffectiveLoading ? (
+      <button ref={internalRef} type={type} className={finalClassName} disabled={isActuallyDisabled} {...props}>
+        {showLoading ? (
           <>
             <Spinner size={size === 'sm' ? 'sm' : 'md'} className="animate-spin shrink-0" />
             {leftIcon ? children : children && <span>{children}</span>}

@@ -4,6 +4,7 @@
 export interface IButtonElement extends HTMLButtonElement {
   setLoading: (loading: boolean) => void;
   loading: boolean;
+  setDisabled: (disabled: boolean) => void; // 👇 Nova capacidade imperativa
 }
 
 export interface IButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
