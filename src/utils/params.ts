@@ -1,7 +1,7 @@
 // Helper para transformar objeto (incluindo aninhados) em query string plana
 export const serializeParams = (obj: any, prefix = ''): Record<string, string> => {
-  let params: Record<string, string> = {};
-  
+  const params: Record<string, string> = {};
+
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = obj[key];

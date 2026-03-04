@@ -27,16 +27,12 @@ const FormAlert: React.FC<IFormAlertProps> = ({ register }) => {
     return null;
   }
 
+  const handleClose = () => setMessage(null);
+  //TODO: title precisa ser parametrizado ou ter um padrão diferente para 'error' e 'success'.
   return (
-    <div className="mb-3">
-      <Alert
-        variant={variant}
-        title="Problemas encontrados"
-        onClose={() => setMessage(null)} // permite o usuário fechar
-      >
-        {message}
-      </Alert>
-    </div>
+    <Alert className="w-full" variant={variant} title="Problemas encontrados" onClose={handleClose}>
+      {message}
+    </Alert>
   );
 };
 

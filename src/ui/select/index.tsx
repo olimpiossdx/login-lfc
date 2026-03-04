@@ -1,17 +1,17 @@
-import { forwardRef, type OptionHTMLAttributes, type ReactNode, type SelectHTMLAttributes, useCallback, useRef } from 'react';
+import React from 'react';
 
 // Interface para objetos de opção (Data Driven)
 // Herda todas as props nativas do <option> (disabled, className, style, etc)
-export interface SelectOption extends OptionHTMLAttributes<HTMLOptionElement> {
+export interface SelectOption extends React.OptionHTMLAttributes<HTMLOptionElement> {
   label: string;
   value: string | number;
 }
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   name: string;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   containerClassName?: string;
   /**
    * Lista de opções para renderização automática.
@@ -29,7 +29,7 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   placeholder?: string; // Texto do placeholder opcional
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
     {
       label,
@@ -50,15 +50,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     },
     ref,
   ) => {
-    const internalRef = useRef<HTMLSelectElement>(null);
+    const internalRef = React.useRef<HTMLSelectElement>(null);
 
-    const setRef = useCallback(
+    const setRef = React.useCallback(
       (element: HTMLSelectElement | null) => {
         internalRef.current = element;
         if (typeof ref === 'function') {
           ref(element);
         } else if (ref) {
-          (ref as React.MutableRefObject<HTMLSelectElement | null>).current = element;
+          (ref as React.RefObject<HTMLSelectElement | null>).current = element;
         }
       },
       [ref],
@@ -74,7 +74,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       }
     };
 
-    const handleInput = (e: React.FormEvent<HTMLSelectElement>) => {
+    const handleInput = (e: React.InputEvent<HTMLSelectElement>) => {
       const target = e.currentTarget;
       if (target.validity.valid) {
         target.removeAttribute('data-invalid');

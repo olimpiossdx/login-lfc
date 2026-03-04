@@ -215,20 +215,19 @@ function DataTableSmart<T extends { id: string | number }>({
   }
 
   function getColumnVisibilityClasses(col: DataTableColumn<T>): string {
-    if (responsiveMode === 'shorten' || responsiveMode === 'compare') {
-      if (col.hideOnMobile) {
+    if (responsiveMode === 'shorten') {
+      if (col.hideOnMobile || col.priority === 'low') {
         return 'hidden md:table-cell';
       }
-      if (col.priority === 'low') {
-        return 'hidden md:table-cell';
-      }
-      return '';
     }
-
+    if (responsiveMode === 'compare') {
+      if (col.hideOnMobile || col.priority === 'low' || col.priority === 'medium') {
+        return 'hidden md:table-cell';
+      }
+    }
     if (isStackLike) {
       return 'block md:table-cell';
     }
-
     return '';
   }
 
@@ -244,7 +243,7 @@ function DataTableSmart<T extends { id: string | number }>({
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               leftIcon={<Search />}
-              size="sm"
+              sized="sm"
             />
           </div>
         </div>

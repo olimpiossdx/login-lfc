@@ -1,21 +1,26 @@
-import { useRef, useEffect, useCallback } from 'react';
+import React from 'react';
 
 export const useAbortController = () => {
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
-  const getSignal = useCallback(() => {
-    // Se já houver uma requisição em curso, cancela
+  const getSignal = React.useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     const newController = new AbortController();
     abortControllerRef.current = newController;
     return newController.signal;
   }, []);
 
-  // Cancela ao desmontar o componente
-  useEffect(() => {
+  // Adicionamos esta função para permitir o aborto manual externo
+  const abortManual = React.useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  React.useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -23,5 +28,5 @@ export const useAbortController = () => {
     };
   }, []);
 
-  return { getSignal };
+  return { getSignal, abortManual }; // Agora expomos o controle
 };

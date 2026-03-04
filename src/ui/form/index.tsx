@@ -14,13 +14,13 @@ export interface IFormProps<TValues> extends Omit<React.FormHTMLAttributes<HTMLF
   validationRules?: ValidatorMap<TValues>;
   validationMode?: ValidationMode;
   // O onSubmit agora pode retornar a IApiResponse para o Form tratar os alertas internos
-  onSubmit?: (body: TValues, formEvent: React.SubmitEvent<HTMLFormElement>) => void | Promise<void | IApiResponse<any>>;
+  onSubmit?: (values: TValues, event: React.SubmitEvent<HTMLFormElement>) => void | Promise<void | IApiResponse<any>>;
   children: React.ReactNode;
 }
 
 // 1. TIPAGEM UNIVERSAL: Aceita Record<string, any> para suportar booleanos e arrays do useForm
 function Form<TValues extends Record<string, any> = Record<string, any>>(props: IFormProps<TValues>) {
-  const { id, initialValues, validationRules, validationMode, onSubmit, children } = props;
+  const { id, initialValues, validationRules, validationMode, onSubmit, children, ...rest } = props;
 
   const { formProps, resetSection, setValidators, handleSubmit } = useForm<TValues>({ id, onSubmit, validationMode });
 
@@ -79,12 +79,11 @@ function Form<TValues extends Record<string, any> = Record<string, any>>(props: 
 
             // Exibe a mensagem no balão <FormAlert> interno para retenção visual local
             servicesRef.current.alert?.show(errorMsg, 'error');
+            const formTarget = event.target as unknown as HTMLFormElement;
 
             // (Bônus) Feedback de Campo: Se a API indicou o campo com erro, focamos nele
             if (errorNotif && errorNotif.campo) {
-              const fieldToFocus = (event.target as unknown as HTMLFormElement).querySelector(
-                `[name="${errorNotif.campo}"]`,
-              ) as HTMLElement;
+              const fieldToFocus = formTarget.querySelector(`[name="${errorNotif.campo}"]`) as HTMLElement;
               if (fieldToFocus) {
                 fieldToFocus.focus();
               }
@@ -99,17 +98,25 @@ function Form<TValues extends Record<string, any> = Record<string, any>>(props: 
     });
   }
 
+  /**
+   * ✅ Merge explícito e previsível
+   * - Props externas têm prioridade
+   * - onSubmit é sempre controlado
+   */
+  const mergedFormProps: React.FormHTMLAttributes<HTMLFormElement> = {
+    ...formProps,
+    ...rest,
+    onSubmit: submitHandler,
+  };
+
   return (
     <FormRegistryContext.Provider value={{ registerFieldRef }}>
-      <form {...formProps} onSubmit={submitHandler}>
-        {/* Balão de Alerta gerenciado pelo FormServices */}
-        <FormAlert
-          register={(svc: IAlertService) => {
-            servicesRef.current.alert = svc;
-          }}
-        />
-        {children}
-      </form>
+      <FormAlert
+        register={(svc: IAlertService) => {
+          servicesRef.current.alert = svc;
+        }}
+      />
+      <form {...mergedFormProps}>{children}</form>
     </FormRegistryContext.Provider>
   );
 }

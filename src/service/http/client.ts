@@ -78,7 +78,7 @@ export class HttpClient {
       headers: new Headers(config.headers || this.defaultHeaders),
       method: config.method || 'GET',
     };
-  
+
     if (!finalConfig.credentials && this.defaultCredentials) {
       finalConfig.credentials = this.defaultCredentials;
     }
@@ -162,6 +162,7 @@ export class HttpClient {
         break;
       }
     }
+    const notifications = apiResponse.notifications || [];
 
     for (const interceptor of this.responseInterceptors) {
       apiResponse = await interceptor(apiResponse);
@@ -171,8 +172,12 @@ export class HttpClient {
       toast.error(apiResponse.error?.message || 'Ocorreu um erro');
     }
 
-    if (finalConfig.notifyOnError && apiResponse.notifications.length > 0) {
-      apiResponse.notifications.map((notification) => toast[notification.status](notification.mensagem));
+    if (finalConfig.notifyOnError && notifications.length > 0) {
+      notifications.forEach((notification) => {
+        if (notification && notification.status && notification.mensagem) {
+          toast[notification.status](notification.mensagem);
+        }
+      });
     }
 
     return apiResponse;
