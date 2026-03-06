@@ -163,6 +163,9 @@ export class HttpClient {
       }
     }
     const notifications = apiResponse.notifications || [];
+    
+    // 👇 INJEÇÃO: Passa a configuração original para a resposta
+    (apiResponse as any).config = finalConfig;
 
     for (const interceptor of this.responseInterceptors) {
       apiResponse = await interceptor(apiResponse);
